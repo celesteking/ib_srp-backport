@@ -124,6 +124,24 @@ static inline u8 rdma_end_port(const struct ib_device *device)
        return (device->node_type == RDMA_NODE_IB_SWITCH) ?
                0 : device->phys_port_cnt;
 }
+
+/* See also commit 569e247f7aa6 */
+enum ib_mr_type {
+	IB_MR_TYPE_MEM_REG,
+	IB_MR_TYPE_SIGNATURE,
+};
+
+static inline struct ib_mr *ib_alloc_mr(struct ib_pd *pd,
+					enum ib_mr_type mr_type, u32 max_num_sg)
+{
+	switch (mr_type) {
+	case IB_MR_TYPE_MEM_REG:
+		return ib_alloc_fast_reg_mr(pd, max_num_sg);
+	case IB_MR_TYPE_SIGNATURE:
+	default:
+		return ERR_PTR(-ENOSYS);
+	}
+}
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 2, 0)
