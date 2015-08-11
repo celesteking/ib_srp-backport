@@ -703,9 +703,6 @@ static int srp_create_ch_ib(struct srp_rdma_ch *ch)
 				     "FR pool allocation failed (%d)\n", ret);
 			goto err_qp;
 		}
-		if (ch->fr_pool)
-			srp_destroy_fr_pool(ch->fr_pool);
-		ch->fr_pool = fr_pool;
 	} else if (!dev->use_fast_reg && dev->has_fmr) {
 		fmr_pool = srp_alloc_fmr_pool(target);
 		if (IS_ERR(fmr_pool)) {
@@ -714,9 +711,6 @@ static int srp_create_ch_ib(struct srp_rdma_ch *ch)
 				     "FMR pool allocation failed (%d)\n", ret);
 			goto err_qp;
 		}
-		if (ch->fmr_pool)
-			ib_destroy_fmr_pool(ch->fmr_pool);
-		ch->fmr_pool = fmr_pool;
 	}
 
 	if (ch->qp)
@@ -729,6 +723,16 @@ static int srp_create_ch_ib(struct srp_rdma_ch *ch)
 	ch->qp = qp;
 	ch->recv_cq = recv_cq;
 	ch->send_cq = send_cq;
+
+	if (dev->use_fast_reg && dev->has_fr) {
+		if (ch->fr_pool)
+			srp_destroy_fr_pool(ch->fr_pool);
+		ch->fr_pool = fr_pool;
+	} else if (!dev->use_fast_reg && dev->has_fmr) {
+		if (ch->fmr_pool)
+			ib_destroy_fmr_pool(ch->fmr_pool);
+		ch->fmr_pool = fmr_pool;
+	}
 
 	kfree(init_attr);
 	return 0;
