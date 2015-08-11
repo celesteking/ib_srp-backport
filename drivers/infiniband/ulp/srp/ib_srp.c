@@ -78,19 +78,13 @@ MODULE_INFO(release_date, DRV_RELDATE);
 static unsigned int srp_sg_tablesize;
 static unsigned int cmd_sg_entries;
 static unsigned int indirect_sg_entries;
-#if defined(CONFIG_ORACLEASM_MODULE) && defined(CONFIG_INFINIBAND_SDP_MODULE)
-/* See also https://bugzilla.oracle.com/bugzilla/show_bug.cgi?id=14119 */
-#define DEF_PREFER_FR 1
-#else
-#define DEF_PREFER_FR 0
-#endif
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(2, 6, 18)
 static int allow_ext_sg;
-static int prefer_fr = DEF_PREFER_FR;
+static int prefer_fr = true;
 static int register_always;
 #else
 static bool allow_ext_sg;
-static bool prefer_fr = DEF_PREFER_FR;
+static bool prefer_fr = true;
 static bool register_always;
 #endif
 static int topspin_workarounds = 1;
@@ -1652,9 +1646,9 @@ static int srp_finish_mapping(struct srp_map_state *state,
 	if (state->npages == 0)
 		return 0;
 
-	if (state->npages == 1 && !register_always)
+	if (state->npages == 1 && target->global_mr)
 		srp_map_desc(state, state->base_dma_addr, state->dma_len,
-			     target->rkey);
+			     target->global_mr->rkey);
 	else
 		ret = dev->use_fast_reg ? srp_map_finish_fr(state, ch) :
 			srp_map_finish_fmr(state, ch);
@@ -1741,7 +1735,8 @@ static int srp_map_sg(struct srp_map_state *state, struct srp_rdma_ch *ch,
 	} else {
 		for_each_sg(scat, sg, count, i) {
 			srp_map_desc(state, ib_sg_dma_address(dev->dev, sg),
-				     ib_sg_dma_len(dev->dev, sg), target->rkey);
+				     ib_sg_dma_len(dev->dev, sg),
+				     target->global_mr->rkey);
 		}
 	}
 
@@ -1857,7 +1852,7 @@ static int srp_map_data(struct scsi_cmnd *scmnd, struct srp_rdma_ch *ch,
 	fmt = SRP_DATA_DESC_DIRECT;
 	len = sizeof (struct srp_cmd) +	sizeof (struct srp_direct_buf);
 
-	if (count == 1 && !register_always) {
+	if (count == 1 && target->global_mr) {
 		/*
 		 * The midlayer only generated a single gather/scatter
 		 * entry, or DMA mapping coalesced everything to a
@@ -1867,7 +1862,7 @@ static int srp_map_data(struct scsi_cmnd *scmnd, struct srp_rdma_ch *ch,
 		struct srp_direct_buf *buf = (void *) cmd->add_data;
 
 		buf->va  = cpu_to_be64(ib_sg_dma_address(ibdev, scat));
-		buf->key = cpu_to_be32(target->rkey);
+		buf->key = cpu_to_be32(target->global_mr->rkey);
 		buf->len = cpu_to_be32(ib_sg_dma_len(ibdev, scat));
 
 		req->nmdesc = 0;
@@ -1921,14 +1916,14 @@ static int srp_map_data(struct scsi_cmnd *scmnd, struct srp_rdma_ch *ch,
 	memcpy(indirect_hdr->desc_list, req->indirect_desc,
 	       count * sizeof (struct srp_direct_buf));
 
-	if (register_always && (dev->use_fast_reg || dev->use_fmr)) {
+	if (!target->global_mr) {
 		ret = srp_map_idb(ch, req, state.gen.next, state.gen.end,
 				  idb_len, &idb_rkey);
 		if (ret < 0)
 			return ret;
 		req->nmdesc++;
 	} else {
-		idb_rkey = target->rkey;
+		idb_rkey = target->global_mr->rkey;
 	}
 
 	indirect_hdr->table_desc.va = cpu_to_be64(req->indirect_dma_addr);
@@ -3989,11 +3984,11 @@ static ssize_t srp_create_target(struct device *dev,
 	target->scsi_host	= target_host;
 	target->srp_host	= host;
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 3, 0)
-	target->lkey		= host->srp_dev->mr->lkey;
+	target->lkey		= host->srp_dev->global_mr->lkey;
 #else
 	target->lkey		= host->srp_dev->pd->local_dma_lkey;
 #endif
-	target->rkey		= host->srp_dev->mr->rkey;
+	target->global_mr	= host->srp_dev->global_mr;
 	target->cmd_sg_cnt	= cmd_sg_entries;
 	target->sg_tablesize	= indirect_sg_entries ? : cmd_sg_entries;
 	target->allow_ext_sg	= allow_ext_sg;
@@ -4374,12 +4369,17 @@ static void srp_add_one(struct ib_device *device)
 	if (IS_ERR(srp_dev->pd))
 		goto free_dev;
 
-	srp_dev->mr = ib_get_dma_mr(srp_dev->pd,
-				    IB_ACCESS_LOCAL_WRITE |
-				    IB_ACCESS_REMOTE_READ |
-				    IB_ACCESS_REMOTE_WRITE);
-	if (IS_ERR(srp_dev->mr))
-		goto err_pd;
+	if (!register_always || (!srp_dev->has_fmr && !srp_dev->has_fr) ||
+	    !HAVE_PD_LOCAL_DMA_LKEY) {
+		srp_dev->global_mr = ib_get_dma_mr(srp_dev->pd,
+						   IB_ACCESS_LOCAL_WRITE |
+						   IB_ACCESS_REMOTE_READ |
+						   IB_ACCESS_REMOTE_WRITE);
+		if (IS_ERR(srp_dev->global_mr))
+			goto err_pd;
+	} else {
+		srp_dev->global_mr = NULL;
+	}
 
 	for (p = rdma_start_port(device); p <= rdma_end_port(device); ++p) {
 		host = srp_add_port(srp_dev, p);
@@ -4446,7 +4446,8 @@ static void srp_remove_one(struct ib_device *device, void *client_data)
 		kfree(host);
 	}
 
-	ib_dereg_mr(srp_dev->mr);
+	if (srp_dev->global_mr)
+		ib_dereg_mr(srp_dev->global_mr);
 	ib_dealloc_pd(srp_dev->pd);
 
 	kfree(srp_dev);
