@@ -1565,6 +1565,9 @@ static int srp_map_finish_fmr(struct srp_map_state *state,
 	struct ib_pool_fmr *fmr;
 	u64 io_addr = 0;
 
+	if (state->fmr.next >= state->fmr.end)
+		return -ENOMEM;
+
 #if defined(CONFIG_ORACLEASM_MODULE) && defined(CONFIG_INFINIBAND_SDP_MODULE)
 	/*
 	 * With Oracle UEK Linux kernel revision 400 ib_fmr_pool_map_phys()
@@ -1581,7 +1584,7 @@ static int srp_map_finish_fmr(struct srp_map_state *state,
 	if (IS_ERR(fmr))
 		return PTR_ERR(fmr);
 
-	*state->next_fmr++ = fmr;
+	*state->fmr.next++ = fmr;
 	state->nmdesc++;
 
 	srp_map_desc(state, state->base_dma_addr & ~dev->mr_page_mask,
@@ -1599,6 +1602,9 @@ static int srp_map_finish_fr(struct srp_map_state *state,
 	struct ib_send_wr wr;
 	struct srp_fr_desc *desc;
 	u32 rkey;
+
+	if (state->fr.next >= state->fr.end)
+		return -ENOMEM;
 
 	desc = srp_fr_pool_get(ch->fr_pool);
 	if (!desc)
@@ -1623,7 +1629,7 @@ static int srp_map_finish_fr(struct srp_map_state *state,
 				       IB_ACCESS_REMOTE_WRITE);
 	wr.wr.fast_reg.rkey = desc->mr->lkey;
 
-	*state->next_fr++ = desc;
+	*state->fr.next++ = desc;
 	state->nmdesc++;
 
 	srp_map_desc(state, state->base_dma_addr, state->dma_len,
@@ -1749,10 +1755,12 @@ static int srp_map_sg(struct srp_map_state *state, struct srp_rdma_ch *ch,
 	state->desc	= req->indirect_desc;
 	state->pages	= req->map_page;
 	if (dev->use_fast_reg) {
-		state->next_fr = req->fr_list;
+		state->fr.next = req->fr_list;
+		state->fr.end = req->fr_list + target->cmd_sg_cnt;
 		use_mr = !!ch->fr_pool;
 	} else {
-		state->next_fmr = req->fmr_list;
+		state->fmr.next = req->fmr_list;
+		state->fmr.end = req->fmr_list + target->cmd_sg_cnt;
 		use_mr = !!ch->fmr_pool;
 	}
 
