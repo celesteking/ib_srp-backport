@@ -93,14 +93,11 @@ all: check
 	    PRE_CFLAGS="$(PRE_CFLAGS)" modules
 
 install: all
-	for m in drivers/scsi/scsi_transport_srp.ko			   \
-	  drivers/infiniband/ulp/srp/ib_srp.ko; do		   	   \
-	  install -vD -m 644 $$m					   \
-	    $(INSTALL_MOD_PATH)/lib/modules/$(KVER)/$(INSTALL_MOD_DIR)/$$(basename $$m); \
+	for d in drivers/scsi drivers/infiniband/ulp/srp; do	   	   \
+	  $(MAKE) -C $(KDIR) SUBDIRS="$(shell pwd)/$$d"			   \
+          $$([ -n "$(INSTALL_MOD_PATH)" ] && echo DEPMOD=true)		   \
+	  PRE_CFLAGS="$(PRE_CFLAGS)" modules_install;			   \
 	done
-	if [ -z "$(INSTALL_MOD_PATH)" ]; then	\
-	  /sbin/depmod -a $(KVER);			\
-	fi
 
 uninstall:
 	for m in scsi_transport_srp.ko ib_srp.ko; do			       \
