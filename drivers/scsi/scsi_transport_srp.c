@@ -527,6 +527,8 @@ static void srp_reconnect_work(struct work_struct *work)
 /**
  * scsi_request_fn_active() - number of kernel threads inside scsi_request_fn()
  * @shost: SCSI host for which to count the number of scsi_request_fn() callers.
+ *
+ * To do: add support for scsi-mq in this function.
  */
 static int scsi_request_fn_active(struct Scsi_Host *shost)
 {
