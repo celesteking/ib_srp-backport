@@ -2407,8 +2407,10 @@ static int SRP_QUEUECOMMAND(struct Scsi_Host *shost, struct scsi_cmnd *scmnd)
 
 	/*
 	 * The "blocked" state of SCSI devices is ignored by the SCSI core for
-	 * REQ_PREEMPT requests. Hence the explicit check below for the SCSI
-	 * device state.
+	 * REQ_PREEMPT requests in Linux kernels before version v4.0. Hence
+	 * the explicit check below for the SCSI device state. See also patch
+	 * "Defer processing of REQ_PREEMPT requests for blocked devices"
+	 * (commit ID bba0bdd7ad47).
 	 */
 	scmnd->result = srp_chkready(target->rport);
 	if (unlikely(scmnd->result != 0 || scsi_device_blocked(scmnd->device))) {
