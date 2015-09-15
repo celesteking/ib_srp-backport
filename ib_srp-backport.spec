@@ -11,7 +11,7 @@
 	)}
 
 Name:		%{kmod_name}-%{kversion}
-Version:	2.0.34
+Version:	2.0.35
 Release:	1
 Summary:	%{kmod_name} kernel modules
 Group:		System/Kernel
@@ -69,6 +69,14 @@ depmod %{kversion}
 /lib/modules/%{kversion}/extra/%{kmod_name}/*.ko
 
 %changelog
+* Tue Sep 15 2015 Bart Van Assche <bart.vanassche@sandisk.com> - 2.0.35
+- IB/srp: Fix a rare crash triggered during reconnect
+- IB/srp: Fix a memory leak triggered by logout
+- IB/srp: Re-enable FMR for non-page aligned buffers
+- IB/srp: Use multiple registrations for large memory regions
+- IB/srp: Add memory descriptor array pointer range checking
+- IB/srp: Port to Linux kernel v4.3
+- IB/srp: Create an insecure all physical rkey only if needed (Linux v4.3+ only)
 * Mon Jul 27 2015 Bart Van Assche <bart.vanassche@sandisk.com> - 2.0.34
 - Handle partial connection success correctly.
 - Bump driver version and release date.
