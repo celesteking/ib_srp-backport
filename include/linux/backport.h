@@ -159,7 +159,7 @@ ib_wc_status_msg(enum ib_wc_status status)
 }
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 2, 0)
+#if !defined(HAVE_IB_CQ_INIT_ATTR)
 /* See also commit bcf4c1ea */
 struct ib_cq_init_attr {
 	unsigned int	cqe;
