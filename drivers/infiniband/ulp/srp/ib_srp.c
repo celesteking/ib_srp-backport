@@ -1139,10 +1139,19 @@ static int srp_alloc_req_data(struct srp_rdma_ch *ch)
 			req->fr_list = mr_list;
 		else
 			req->fmr_list = mr_list;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 		req->map_page = kmalloc(srp_dev->max_pages_per_mr *
 					sizeof(void *), GFP_KERNEL);
 		if (!req->map_page)
 			goto out;
+#else
+		if (!srp_dev->use_fast_reg) {
+			req->map_page = kmalloc(srp_dev->max_pages_per_mr *
+						sizeof(void *), GFP_KERNEL);
+			if (!req->map_page)
+				goto out;
+		}
+#endif
 		req->indirect_desc = kmalloc(target->indirect_size, GFP_KERNEL);
 		if (!req->indirect_desc)
 			goto out;
