@@ -1590,6 +1590,7 @@ static int srp_map_finish_fmr(struct srp_map_state *state,
 	return 0;
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 static int srp_map_finish_fr(struct srp_map_state *state,
 			     struct srp_rdma_ch *ch)
 {
@@ -1634,6 +1635,52 @@ static int srp_map_finish_fr(struct srp_map_state *state,
 
 	return ib_post_send(ch->qp, &wr, &bad_wr);
 }
+#else /* LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) */
+static int srp_map_finish_fr(struct srp_map_state *state,
+			     struct srp_rdma_ch *ch)
+{
+	struct srp_target_port *target = ch->target;
+	struct srp_device *dev = target->srp_host->srp_dev;
+	struct ib_send_wr *bad_wr;
+	struct ib_fast_reg_wr wr;
+	struct srp_fr_desc *desc;
+	u32 rkey;
+
+	if (state->fr.next >= state->fr.end)
+		return -ENOMEM;
+
+	desc = srp_fr_pool_get(ch->fr_pool);
+	if (!desc)
+		return -ENOMEM;
+
+	rkey = ib_inc_rkey(desc->mr->rkey);
+	ib_update_fast_reg_key(desc->mr, rkey);
+
+	memcpy(desc->frpl->page_list, state->pages,
+	       sizeof(state->pages[0]) * state->npages);
+
+	memset(&wr, 0, sizeof(wr));
+	wr.wr.opcode = IB_WR_FAST_REG_MR;
+	wr.wr.wr_id = FAST_REG_WR_ID_MASK;
+	wr.fast_reg.iova_start = state->base_dma_addr;
+	wr.fast_reg.page_list = desc->frpl;
+	wr.fast_reg.page_list_len = state->npages;
+	wr.fast_reg.page_shift = ilog2(dev->mr_page_size);
+	wr.fast_reg.length = state->dma_len;
+	wr.fast_reg.access_flags = (IB_ACCESS_LOCAL_WRITE |
+				    IB_ACCESS_REMOTE_READ |
+				    IB_ACCESS_REMOTE_WRITE);
+	wr.fast_reg.rkey = desc->mr->lkey;
+
+	*state->fr.next++ = desc;
+	state->nmdesc++;
+
+	srp_map_desc(state, state->base_dma_addr, state->dma_len,
+		     desc->mr->rkey);
+
+	return ib_post_send(ch->qp, &wr.wr, &bad_wr);
+}
+#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) */
 
 static int srp_finish_mapping(struct srp_map_state *state,
 			      struct srp_rdma_ch *ch)
