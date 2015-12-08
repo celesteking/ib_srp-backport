@@ -1,3 +1,4 @@
+#include <linux/module.h>
 #include <scsi/scsi_host.h>
 
 static int cqd(struct scsi_device *sdev, int qdepth, int reason)
