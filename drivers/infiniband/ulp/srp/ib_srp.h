@@ -89,7 +89,7 @@ enum srp_iu_type {
 	SRP_IU_RSP,
 };
 
-#ifndef HAVE_USE_BLK_TAGS
+#ifndef HAVE_SCSI_MQ
 static inline u32 build_srp_tag(u16 ch, u16 req_idx)
 {
 	return ch << 16 | req_idx;
@@ -143,7 +143,7 @@ struct srp_host {
 };
 
 struct srp_request {
-#ifndef HAVE_USE_BLK_TAGS
+#ifndef HAVE_SCSI_MQ
 	struct list_head	list;
 #endif
 	struct scsi_cmnd       *scmnd;
@@ -156,7 +156,7 @@ struct srp_request {
 	struct srp_direct_buf  *indirect_desc;
 	dma_addr_t		indirect_dma_addr;
 	short			nmdesc;
-#ifndef HAVE_USE_BLK_TAGS
+#ifndef HAVE_SCSI_MQ
 	uint32_t		tag;
 #endif
 };
@@ -170,7 +170,7 @@ struct srp_request {
 struct srp_rdma_ch {
 	/* These are RW in the hot path, and commonly used together */
 	struct list_head	free_tx;
-#ifndef HAVE_USE_BLK_TAGS
+#ifndef HAVE_SCSI_MQ
 	struct list_head	free_reqs;
 #endif
 	spinlock_t		lock;
@@ -233,7 +233,7 @@ struct srp_target_port {
 	/* read only in the hot path */
 	struct ib_mr		*global_mr;
 	struct srp_rdma_ch	*ch;
-#ifndef HAVE_USE_BLK_TAGS
+#ifndef HAVE_SCSI_MQ
 	int			*mq_map;
 #endif
 	u32			ch_count;

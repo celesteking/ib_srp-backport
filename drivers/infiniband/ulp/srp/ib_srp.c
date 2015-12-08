@@ -1114,7 +1114,7 @@ static int srp_alloc_req_data(struct srp_rdma_ch *ch)
 	dma_addr_t dma_addr;
 	int i, ret = -ENOMEM;
 
-#ifndef HAVE_USE_BLK_TAGS
+#ifndef HAVE_SCSI_MQ
 	INIT_LIST_HEAD(&ch->free_reqs);
 #endif
 
@@ -1148,7 +1148,7 @@ static int srp_alloc_req_data(struct srp_rdma_ch *ch)
 			goto out;
 
 		req->indirect_dma_addr = dma_addr;
-#ifndef HAVE_USE_BLK_TAGS
+#ifndef HAVE_SCSI_MQ
 		req->tag = build_srp_tag(ch - target->ch, i);
 		list_add_tail(&req->list, &ch->free_reqs);
 #endif
@@ -1204,7 +1204,7 @@ static void srp_remove_target(struct srp_target_port *target)
 		ch = &target->ch[i];
 		srp_free_req_data(target, ch);
 	}
-#ifndef HAVE_USE_BLK_TAGS
+#ifndef HAVE_SCSI_MQ
 	kfree(target->mq_map);
 	target->mq_map = NULL;
 #endif
@@ -1411,7 +1411,7 @@ static void srp_free_req(struct srp_rdma_ch *ch, struct srp_request *req,
 
 	spin_lock_irqsave(&ch->lock, flags);
 	ch->req_lim += req_lim_delta;
-#ifndef HAVE_USE_BLK_TAGS
+#ifndef HAVE_SCSI_MQ
 	list_add_tail(&req->list, &ch->free_reqs);
 #endif
 	spin_unlock_irqrestore(&ch->lock, flags);
@@ -2050,7 +2050,7 @@ static void srp_process_rsp(struct srp_rdma_ch *ch, struct srp_rsp *rsp)
 	struct srp_request *req;
 	struct scsi_cmnd *scmnd;
 	unsigned long flags;
-#ifndef HAVE_USE_BLK_TAGS
+#ifndef HAVE_SCSI_MQ
 	unsigned i;
 #endif
 
@@ -2064,7 +2064,7 @@ static void srp_process_rsp(struct srp_rdma_ch *ch, struct srp_rsp *rsp)
 			ch->tsk_mgmt_status = rsp->data[3];
 		complete(&ch->tsk_mgmt_done);
 	} else {
-#ifdef HAVE_USE_BLK_TAGS
+#ifdef HAVE_SCSI_MQ
 		scmnd = scsi_host_find_tag(target->scsi_host, rsp->tag);
 		if (scmnd) {
 			req = (void *)scmnd->host_scribble;
@@ -2336,7 +2336,7 @@ static void srp_send_completion(struct ib_cq *cq, void *ch_ptr)
 	}
 }
 
-#ifndef HAVE_USE_BLK_TAGS
+#ifndef HAVE_SCSI_MQ
 static struct srp_rdma_ch *srp_map_cpu_to_ch(struct srp_target_port *target)
 {
 	return &target->ch[target->mq_map[raw_smp_processor_id()]];
@@ -2397,7 +2397,7 @@ static int SRP_QUEUECOMMAND(struct Scsi_Host *shost, struct scsi_cmnd *scmnd)
 	struct ib_device *dev;
 	unsigned long flags;
 	u32 tag;
-#ifdef HAVE_USE_BLK_TAGS
+#ifdef HAVE_SCSI_MQ
 	u16 idx;
 #endif
 	int len, ret;
@@ -2429,7 +2429,7 @@ static int SRP_QUEUECOMMAND(struct Scsi_Host *shost, struct scsi_cmnd *scmnd)
 		goto err;
 	}
 
-#ifdef HAVE_USE_BLK_TAGS
+#ifdef HAVE_SCSI_MQ
 	WARN_ON_ONCE(scmnd->request->tag < 0);
 	tag = blk_mq_unique_tag(scmnd->request);
 	ch = &target->ch[blk_mq_unique_tag_to_hwq(tag)];
@@ -2446,7 +2446,7 @@ static int SRP_QUEUECOMMAND(struct Scsi_Host *shost, struct scsi_cmnd *scmnd)
 	if (!iu)
 		goto err_unlock;
 
-#ifdef HAVE_USE_BLK_TAGS
+#ifdef HAVE_SCSI_MQ
 	req = &ch->req_ring[idx];
 #else
 	req = list_first_entry(&ch->free_reqs, struct srp_request, list);
@@ -2516,7 +2516,7 @@ err_iu:
 	req->scmnd = NULL;
 
 	spin_lock_irqsave(&ch->lock, flags);
-#ifndef HAVE_USE_BLK_TAGS
+#ifndef HAVE_SCSI_MQ
 	list_add(&req->list, &ch->free_reqs);
 #endif
 
@@ -3109,7 +3109,7 @@ static int srp_abort(struct scsi_cmnd *scmnd)
 
 	if (!req)
 		return SUCCESS;
-#ifdef HAVE_USE_BLK_TAGS
+#ifdef HAVE_SCSI_MQ
 	tag = blk_mq_unique_tag(scmnd->request);
 	ch_idx = blk_mq_unique_tag_to_hwq(tag);
 #else
@@ -3963,7 +3963,7 @@ static ssize_t srp_create_target(struct device *dev,
 	struct srp_device *srp_dev = host->srp_dev;
 	struct ib_device *ibdev = srp_dev->dev;
 	int ret, node_idx, node, cpu, i;
-#ifndef HAVE_USE_BLK_TAGS
+#ifndef HAVE_SCSI_MQ
 	int first_cpu = -1;
 #endif
 	bool multich = false;
@@ -4062,7 +4062,7 @@ static ssize_t srp_create_target(struct device *dev,
 	if (!target->ch)
 		goto out;
 
-#ifndef HAVE_USE_BLK_TAGS
+#ifndef HAVE_SCSI_MQ
 	target->mq_map = kcalloc(nr_cpu_ids, sizeof(*target->mq_map),
 				 GFP_KERNEL);
 	if (!target->mq_map)
@@ -4086,7 +4086,7 @@ static ssize_t srp_create_target(struct device *dev,
 		for_each_online_cpu(cpu) {
 			if (cpu_to_node(cpu) != node)
 				continue;
-#ifndef HAVE_USE_BLK_TAGS
+#ifndef HAVE_SCSI_MQ
 			if (first_cpu < 0)
 				first_cpu = cpu;
 			target->mq_map[cpu] = ch_start == ch_end ? ch_start :
@@ -4123,7 +4123,7 @@ static ssize_t srp_create_target(struct device *dev,
 				} else {
 					srp_free_ch_ib(target, ch);
 					srp_free_req_data(target, ch);
-#ifndef HAVE_USE_BLK_TAGS
+#ifndef HAVE_SCSI_MQ
 					target->mq_map[cpu] = first_cpu;
 #endif
 					target->ch_count = ch - target->ch;
@@ -4138,7 +4138,7 @@ static ssize_t srp_create_target(struct device *dev,
 	}
 
 connected:
-#ifdef HAVE_USE_BLK_TAGS
+#ifdef HAVE_SCSI_MQ
 	target->scsi_host->nr_hw_queues = target->ch_count;
 #else
 	if (first_cpu != 0)
@@ -4192,7 +4192,7 @@ err_disconnect:
 		srp_free_req_data(target, ch);
 	}
 
-#ifndef HAVE_USE_BLK_TAGS
+#ifndef HAVE_SCSI_MQ
 	kfree(target->mq_map);
 
 err_free_ch:
