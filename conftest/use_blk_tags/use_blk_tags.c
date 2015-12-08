@@ -1,3 +1,4 @@
+#include <linux/module.h>
 #include <scsi/scsi_host.h>
 
 static int modinit(void)
