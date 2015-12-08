@@ -307,7 +307,9 @@ struct srp_iu {
 struct srp_fr_desc {
 	struct list_head		entry;
 	struct ib_mr			*mr;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 	struct ib_fast_reg_page_list	*frpl;
+#endif
 };
 
 /**
@@ -359,7 +361,10 @@ struct srp_map_state {
 		} gen;
 	};
 	struct srp_direct_buf  *desc;
-	u64		       *pages;
+	union {
+		u64			*pages;
+		struct scatterlist	*sg;
+	};
 	dma_addr_t		base_dma_addr;
 	u32			dma_len;
 	u32			total_len;

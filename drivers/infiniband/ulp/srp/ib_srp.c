@@ -481,8 +481,10 @@ static void srp_destroy_fr_pool(struct srp_fr_pool *pool)
 		return;
 
 	for (i = 0, d = &pool->desc[0]; i < pool->size; i++, d++) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 		if (d->frpl)
 			ib_free_fast_reg_page_list(d->frpl);
+#endif
 		if (d->mr)
 			ib_dereg_mr(d->mr);
 	}
@@ -503,7 +505,9 @@ static struct srp_fr_pool *srp_create_fr_pool(struct ib_device *device,
 	struct srp_fr_pool *pool;
 	struct srp_fr_desc *d;
 	struct ib_mr *mr;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 	struct ib_fast_reg_page_list *frpl;
+#endif
 	int i, ret = -EINVAL;
 
 	if (pool_size <= 0)
@@ -526,12 +530,14 @@ static struct srp_fr_pool *srp_create_fr_pool(struct ib_device *device,
 			goto destroy_pool;
 		}
 		d->mr = mr;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 		frpl = ib_alloc_fast_reg_page_list(device, max_page_list_len);
 		if (IS_ERR(frpl)) {
 			ret = PTR_ERR(frpl);
 			goto destroy_pool;
 		}
 		d->frpl = frpl;
+#endif
 		list_add_tail(&d->entry, &pool->free_list);
 	}
 
@@ -1661,7 +1667,7 @@ static int srp_map_finish_fr(struct srp_map_state *state,
 		     desc->mr->rkey);
 
 	err = ib_post_send(ch->qp, &wr, &bad_wr);
-	if (err)
+	if (unlikely(err))
 		return err;
 
 reset_state:
@@ -1672,28 +1678,29 @@ reset_state:
 }
 #else /* LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) */
 static int srp_map_finish_fr(struct srp_map_state *state,
-			     struct srp_rdma_ch *ch)
+			     struct srp_rdma_ch *ch, int count)
 {
 	struct srp_target_port *target = ch->target;
 	struct srp_device *dev = target->srp_host->srp_dev;
 	struct ib_send_wr *bad_wr;
-	struct ib_fast_reg_wr wr;
+	struct ib_reg_wr wr;
 	struct srp_fr_desc *desc;
 	u32 rkey;
-	int err;
+	int n, err;
 
 	if (state->fr.next >= state->fr.end)
 		return -ENOMEM;
 
 	WARN_ON_ONCE(!dev->use_fast_reg);
 
-	if (state->npages == 0)
+	if (count == 0)
 		return 0;
 
-	if (state->npages == 1 && target->global_mr) {
-		srp_map_desc(state, state->base_dma_addr, state->dma_len,
+	if (count == 1 && target->global_mr) {
+		srp_map_desc(state, sg_dma_address(state->sg),
+			     sg_dma_len(state->sg),
 			     target->global_mr->rkey);
-		goto reset_state;
+		return 1;
 	}
 
 	desc = srp_fr_pool_get(ch->fr_pool);
@@ -1703,37 +1710,32 @@ static int srp_map_finish_fr(struct srp_map_state *state,
 	rkey = ib_inc_rkey(desc->mr->rkey);
 	ib_update_fast_reg_key(desc->mr, rkey);
 
-	memcpy(desc->frpl->page_list, state->pages,
-	       sizeof(state->pages[0]) * state->npages);
+	n = ib_map_mr_sg(desc->mr, state->sg, count, dev->mr_page_size);
+	if (unlikely(n < 0))
+		return n;
 
-	memset(&wr, 0, sizeof(wr));
-	wr.wr.opcode = IB_WR_FAST_REG_MR;
+	wr.wr.next = NULL;
+	wr.wr.opcode = IB_WR_REG_MR;
 	wr.wr.wr_id = FAST_REG_WR_ID_MASK;
-	wr.fast_reg.iova_start = state->base_dma_addr;
-	wr.fast_reg.page_list = desc->frpl;
-	wr.fast_reg.page_list_len = state->npages;
-	wr.fast_reg.page_shift = ilog2(dev->mr_page_size);
-	wr.fast_reg.length = state->dma_len;
-	wr.fast_reg.access_flags = (IB_ACCESS_LOCAL_WRITE |
-				    IB_ACCESS_REMOTE_READ |
-				    IB_ACCESS_REMOTE_WRITE);
-	wr.fast_reg.rkey = desc->mr->lkey;
+	wr.wr.num_sge = 0;
+	wr.wr.send_flags = 0;
+	wr.mr = desc->mr;
+	wr.key = desc->mr->rkey;
+	wr.access = (IB_ACCESS_LOCAL_WRITE |
+		     IB_ACCESS_REMOTE_READ |
+		     IB_ACCESS_REMOTE_WRITE);
 
 	*state->fr.next++ = desc;
 	state->nmdesc++;
 
-	srp_map_desc(state, state->base_dma_addr, state->dma_len,
-		     desc->mr->rkey);
+	srp_map_desc(state, desc->mr->iova,
+		     desc->mr->length, desc->mr->rkey);
 
 	err = ib_post_send(ch->qp, &wr.wr, &bad_wr);
-	if (err)
+	if (unlikely(err))
 		return err;
 
-reset_state:
-	state->npages = 0;
-	state->dma_len = 0;
-
-	return 0;
+	return n;
 }
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) */
 
@@ -1764,7 +1766,11 @@ static int srp_map_sg_entry(struct srp_map_state *state,
 	while (dma_len) {
 		unsigned offset = dma_addr & ~dev->mr_page_mask;
 		if (state->npages == dev->max_pages_per_mr || offset != 0) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 			ret = srp_finish_mapping(state, ch);
+#else
+			ret = srp_map_finish_fmr(state, ch);
+#endif
 			if (ret)
 				return ret;
 		}
@@ -1786,7 +1792,11 @@ static int srp_map_sg_entry(struct srp_map_state *state,
 	 */
 	ret = 0;
 	if (len != dev->mr_page_size)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 		ret = srp_finish_mapping(state, ch);
+#else
+		ret = srp_map_finish_fmr(state, ch);
+#endif
 	return ret;
 }
 
@@ -1808,7 +1818,7 @@ static int srp_map_sg_fmr(struct srp_map_state *state, struct srp_rdma_ch *ch,
 			return ret;
 	}
 
-	ret = srp_finish_mapping(state, ch);
+	ret = srp_map_finish_fmr(state, ch);
 	if (ret)
 		return ret;
 
@@ -1821,6 +1831,7 @@ static int srp_map_sg_fr(struct srp_map_state *state, struct srp_rdma_ch *ch,
 			 struct srp_request *req, struct scatterlist *scat,
 			 int count)
 {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 	struct scatterlist *sg;
 	int i, ret;
 
@@ -1838,6 +1849,24 @@ static int srp_map_sg_fr(struct srp_map_state *state, struct srp_rdma_ch *ch,
 	ret = srp_finish_mapping(state, ch);
 	if (ret)
 		return ret;
+#else
+	state->desc = req->indirect_desc;
+	state->fr.next = req->fr_list;
+	state->fr.end = req->fr_list + ch->target->cmd_sg_cnt;
+	state->sg = scat;
+
+	while (count) {
+		int i, n;
+
+		n = srp_map_finish_fr(state, ch, count);
+		if (unlikely(n < 0))
+			return n;
+
+		count -= n;
+		for (i = 0; i < n; i++)
+			state->sg = sg_next(state->sg);
+	}
+#endif
 
 	req->nmdesc = state->nmdesc;
 
@@ -1881,6 +1910,9 @@ static int srp_map_idb(struct srp_rdma_ch *ch, struct srp_request *req,
 	struct srp_map_state state;
 	struct srp_direct_buf idb_desc;
 	u64 idb_pages[1];
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0)
+	struct scatterlist idb_sg[1];
+#endif
 	int ret;
 
 	memset(&state, 0, sizeof(state));
@@ -1888,20 +1920,46 @@ static int srp_map_idb(struct srp_rdma_ch *ch, struct srp_request *req,
 	state.gen.next = next_mr;
 	state.gen.end = end_mr;
 	state.desc = &idb_desc;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 	state.pages = idb_pages;
 	state.pages[0] = (req->indirect_dma_addr &
 			  dev->mr_page_mask);
 	state.npages = 1;
+#endif
 	state.base_dma_addr = req->indirect_dma_addr;
 	state.dma_len = idb_len;
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 	ret = srp_finish_mapping(&state, ch);
 	if (ret < 0)
-		goto out;
+		return ret;
+#else
+	if (dev->use_fast_reg) {
+		state.sg = idb_sg;
+		sg_set_buf(idb_sg, req->indirect_desc, idb_len);
+		idb_sg->dma_address = req->indirect_dma_addr; /* hack! */
+#ifdef CONFIG_NEED_SG_DMA_LENGTH
+		idb_sg->dma_length = idb_sg->length;	      /* hack^2 */
+#endif
+		ret = srp_map_finish_fr(&state, ch, 1);
+		if (ret < 0)
+			return ret;
+	} else if (dev->use_fmr) {
+		state.pages = idb_pages;
+		state.pages[0] = (req->indirect_dma_addr &
+				  dev->mr_page_mask);
+		state.npages = 1;
+		ret = srp_map_finish_fmr(&state, ch);
+		if (ret < 0)
+			return ret;
+	} else {
+		return -EINVAL;
+	}
+#endif
 
 	*idb_rkey = idb_desc.key;
 
-out:
-	return ret;
+	return 0;
 }
 
 static int srp_map_data(struct scsi_cmnd *scmnd, struct srp_rdma_ch *ch,
