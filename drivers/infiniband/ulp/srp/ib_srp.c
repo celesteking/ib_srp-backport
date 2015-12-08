@@ -1739,6 +1739,7 @@ static int srp_map_finish_fr(struct srp_map_state *state,
 }
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) */
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 static int srp_finish_mapping(struct srp_map_state *state,
 			      struct srp_rdma_ch *ch)
 {
@@ -1748,6 +1749,7 @@ static int srp_finish_mapping(struct srp_map_state *state,
 	return dev->use_fast_reg ? srp_map_finish_fr(state, ch) :
 				   srp_map_finish_fmr(state, ch);
 }
+#endif
 
 static int srp_map_sg_entry(struct srp_map_state *state,
 			    struct srp_rdma_ch *ch,
