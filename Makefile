@@ -39,7 +39,7 @@ ifeq ($(OFED_FLAVOR),MOFED)
 # header files use the LINUX_BACKPORT() macro without including
 # <linux/compat-2.6.h>, include that header file explicitly.
 OFED_KERNEL_DIR:=/usr/src/ofa_kernel/default
-OFED_CFLAGS:=-I$(OFED_KERNEL_DIR)/include -include linux/compat-2.6.h
+OFED_CFLAGS:=-I$(OFED_KERNEL_DIR)/include -include "linux/compat-2.6.h"
 else
 # OFED 1.5
 OFED_KERNEL_DIR:=/usr/src/ofa_kernel
@@ -69,14 +69,14 @@ all: check
 	awk '{sym[$$2]=$$0} END {for (s in sym){print sym[s]}}' >"$$m";    \
 	CONFIG_SCSI_SRP_ATTRS=m						   \
 		$(MAKE) -C $(KDIR) M=$(shell pwd)/drivers/scsi		   \
-		PRE_CFLAGS="$(PRE_CFLAGS)" modules
+		PRE_CFLAGS='$(PRE_CFLAGS)' modules
 	@m="$(shell pwd)/drivers/infiniband/ulp/srp/$(MODULE_SYMVERS)";	   \
 	cat "$(KDIR)/$(MODULE_SYMVERS)" $(OFED_MODULE_SYMVERS)		   \
 		"$(shell pwd)/drivers/scsi/$(MODULE_SYMVERS)" |		   \
 	awk '{sym[$$2]=$$0} END {for (s in sym){print sym[s]}}' >"$$m";	   \
 	CONFIG_SCSI_SRP_ATTRS=m CONFIG_SCSI_SRP=m CONFIG_INFINIBAND_SRP=m  \
 	$(MAKE) -C $(KDIR) M=$(shell pwd)/drivers/infiniband/ulp/srp	   \
-	    PRE_CFLAGS="$(PRE_CFLAGS)" modules
+	    PRE_CFLAGS='$(PRE_CFLAGS) -DBUILD_CFLAGS='"'"'$(PRE_CFLAGS)'"'"'' modules
 
 install: all
 	for d in drivers/scsi drivers/infiniband/ulp/srp; do	   	   \
