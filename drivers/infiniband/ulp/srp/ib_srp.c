@@ -421,8 +421,16 @@ static int srp_new_rdma_cm_id(struct srp_rdma_ch *ch)
 	char addr[64];
 	int ret;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 0, 0) && \
+        (!defined(RHEL_MAJOR) || RHEL_MAJOR -0 < 6)
+	new_cm_id = rdma_create_id(srp_rdma_cm_handler, ch, RDMA_PS_TCP);
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 	new_cm_id = rdma_create_id(srp_rdma_cm_handler, ch, RDMA_PS_TCP,
 				   IB_QPT_RC);
+#else
+	new_cm_id = rdma_create_id(&init_net, srp_rdma_cm_handler, ch,
+				   RDMA_PS_TCP, IB_QPT_RC);
+#endif
 	if (IS_ERR(new_cm_id)) {
 		ret = PTR_ERR(new_cm_id);
 		new_cm_id = NULL;
