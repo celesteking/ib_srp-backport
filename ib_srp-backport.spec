@@ -11,7 +11,7 @@
 	)}
 
 Name:		%{kmod_name}-%{kversion}
-Version:	2.0.35
+Version:	2.0.36
 Release:	1
 Summary:	%{kmod_name} kernel modules
 Group:		System/Kernel
@@ -69,6 +69,13 @@ depmod %{kversion}
 /lib/modules/%{kversion}/extra/%{kmod_name}/*.ko
 
 %changelog
+* Thu Dec 10 2015 Bart Van Assche <bart.vanassche@sandisk.com> - 2.0.36
+- Fixed a memory leak that could be triggered by SRP login.
+- Ported this driver to Linux kernel v4.4, to RHEL 7.2 and also to MOFED 3.1.1.
+- Building this driver no longer fails if an ib_srp.ko driver exists under
+  /lib/modules/$(uname -r).
+- Reduced the build time.
+- Removed the source files that are not needed to build this driver.
 * Tue Sep 15 2015 Bart Van Assche <bart.vanassche@sandisk.com> - 2.0.35
 - IB/srp: Fix a rare crash triggered during reconnect
 - IB/srp: Fix a memory leak triggered by logout
