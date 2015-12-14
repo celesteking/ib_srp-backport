@@ -53,6 +53,7 @@ endif
 
 INSTALL_MOD_DIR ?= extra
 HAVE_IB_CQ_INIT_ATTR = $(shell $(MAKE) -C $(KDIR) SUBDIRS=$(shell pwd)/conftest/ib_cq_init_attr PRE_CFLAGS="$(OFED_CFLAGS)" >/dev/null 2>&1 && echo -DHAVE_IB_CQ_INIT_ATTR)
+HAVE_IB_CREATE_CQ_ATTR_ARG = $(shell $(MAKE) -C $(KDIR) SUBDIRS=$(shell pwd)/conftest/create_cq PRE_CFLAGS="$(OFED_CFLAGS)" >/dev/null 2>&1 && echo -DHAVE_IB_CREATE_CQ_ATTR_ARG)
 HAVE_IB_INC_RKEY = $(shell $(MAKE) -C $(KDIR) SUBDIRS=$(shell pwd)/conftest/ib_inc_rkey PRE_CFLAGS="$(OFED_CFLAGS)" >/dev/null 2>&1 && echo -DHAVE_IB_INC_RKEY)
 HAVE_PD_LOCAL_DMA_LKEY = $(shell $(MAKE) -C $(KDIR) SUBDIRS=$(shell pwd)/conftest/pd_local_dma_lkey PRE_CFLAGS="-Werror $(OFED_CFLAGS)" >/dev/null 2>&1; echo -DHAVE_PD_LOCAL_DMA_LKEY=$$(($$? ? 0 : 1)))
 HAVE_SCSI_MQ = $(shell $(MAKE) -C $(KDIR) SUBDIRS=$(shell pwd)/conftest/scsi_mq PRE_CFLAGS="$(OFED_CFLAGS)" >/dev/null 2>&1 && echo -DHAVE_SCSI_MQ)
@@ -60,7 +61,8 @@ HAVE_SCSI_QDEPTH_REASON = $(shell $(MAKE) -C $(KDIR) SUBDIRS=$(shell pwd)/confte
 HAVE_SYSTEM_LONG_WQ = $(shell $(MAKE) -C $(KDIR) SUBDIRS=$(shell pwd)/conftest/system_long_wq PRE_CFLAGS="-Werror $(OFED_CFLAGS)" >/dev/null 2>&1 && echo -DHAVE_SYSTEM_LONG_WQ)
 HAVE_TRACK_QUEUE_DEPTH = $(shell $(MAKE) -C $(KDIR) SUBDIRS=$(shell pwd)/conftest/track_queue_depth PRE_CFLAGS="$(OFED_CFLAGS)" >/dev/null 2>&1 && echo -DHAVE_TRACK_QUEUE_DEPTH)
 HAVE_USE_BLK_TAGS = $(shell $(MAKE) -C $(KDIR) SUBDIRS=$(shell pwd)/conftest/use_blk_tags PRE_CFLAGS="$(OFED_CFLAGS)" >/dev/null 2>&1 && echo -DHAVE_USE_BLK_TAGS)
-PRE_CFLAGS = $(OFED_CFLAGS) $(HAVE_IB_CQ_INIT_ATTR) $(HAVE_IB_INC_RKEY) \
+PRE_CFLAGS = $(OFED_CFLAGS) $(HAVE_IB_CQ_INIT_ATTR)			\
+	$(HAVE_IB_CREATE_CQ_ATTR_ARG) $(HAVE_IB_INC_RKEY)		\
 	$(HAVE_PD_LOCAL_DMA_LKEY) $(HAVE_SCSI_MQ)			\
 	$(HAVE_SCSI_QDEPTH_REASON) $(HAVE_SYSTEM_LONG_WQ)		\
 	$(HAVE_TRACK_QUEUE_DEPTH) $(HAVE_USE_BLK_TAGS)			\
