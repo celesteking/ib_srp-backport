@@ -4259,11 +4259,7 @@ static ssize_t srp_create_target(struct device *dev,
 	INIT_WORK(&target->remove_work, srp_remove_work);
 #endif
 	spin_lock_init(&target->lock);
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
-	ret = ib_query_gid(ibdev, host->port, 0, &target->sgid);
-#else
 	ret = ib_query_gid(ibdev, host->port, 0, &target->sgid, NULL);
-#endif
 	if (ret)
 		goto out;
 
