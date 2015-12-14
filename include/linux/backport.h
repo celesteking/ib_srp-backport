@@ -210,6 +210,23 @@ static inline struct ib_cq *ib_create_cq_compat(struct ib_device *device,
 #define ib_create_cq ib_create_cq_compat
 #endif
 
+#if !defined(HAVE_IB_QUERY_GID_WITH_ATTR)
+#if !defined(HAVE_STRUCT_IB_GID_ATTR)
+struct ib_gid_attr {
+};
+#endif
+/* See also commit 55ee3ab2e49a9ead850722ef47698243dd226d16 */
+static inline int ib_query_gid_compat(struct ib_device *device,
+				      u8 port_num, int index,
+				      union ib_gid *gid,
+				      struct ib_gid_attr *attr)
+{
+	memset(attr, 0, sizeof(*attr));
+	return ib_query_gid(device, port_num, index, gid);
+}
+#define ib_query_gid ib_query_gid_compat
+#endif
+
 /* <rdma/rdma_cm.h> */
 /*
  * commit b26f9b9 (RDMA/cma: Pass QP type into rdma_create_id())
