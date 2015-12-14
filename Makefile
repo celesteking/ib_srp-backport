@@ -99,15 +99,6 @@ check:
 	    echo "Error: the OFED package $(OFED_KERNEL_IB_RPM)-devel has"  \
 	         "not yet been installed.";                                 \
 	    false;                                                          \
-	  elif [ -e /lib/modules/$(KVER)/kernel/drivers/infiniband ]; then  \
-	    echo "Error: the distro-provided InfiniBand kernel drivers"     \
-	         "must be removed first"                                    \
-	         " (/lib/modules/$(KVER)/kernel/drivers/infiniband).";      \
-	    false;                                                          \
-	  elif [ -e /lib/modules/$(KVER)/updates/drivers/infiniband/ulp/srp/ib_srp.ko ]; then \
-	    echo "Error: the OFED SRP initiator must be removed first"      \
-	         "(/lib/modules/$(KVER)/updates/drivers/infiniband/ulp/srp/ib_srp.ko).";    \
-	    false;                                                          \
 	  else                                                              \
 	    echo "  Building against $(OFED_FLAVOR) $(OFED_KERNEL_IB_RPM)"  \
 	         "InfiniBand kernel headers.";                              \
