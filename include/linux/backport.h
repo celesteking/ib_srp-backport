@@ -112,7 +112,9 @@ static inline u32 ib_inc_rkey(u32 rkey)
 }
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 2, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 2, 0) &&	\
+	(!defined(RHEL_MAJOR) || RHEL_MAJOR -0 < 7 ||	\
+	 RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 2)
 /* See also commit 4139032b */
 static inline u8 rdma_start_port(const struct ib_device *device)
 {
@@ -124,7 +126,9 @@ static inline u8 rdma_end_port(const struct ib_device *device)
        return (device->node_type == RDMA_NODE_IB_SWITCH) ?
                0 : device->phys_port_cnt;
 }
+#endif
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 2, 0)
 /* See also commit 569e247f7aa6 */
 enum ib_mr_type {
 	IB_MR_TYPE_MEM_REG,
@@ -144,7 +148,9 @@ static inline struct ib_mr *ib_alloc_mr(struct ib_pd *pd,
 }
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 2, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 2, 0) &&   \
+	(!defined(RHEL_MAJOR) || RHEL_MAJOR -0 < 7 || \
+	 RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 2)
 /* See also commit 2b1b5b60 */
 static inline const char *__attribute_const__
 ib_event_msg(enum ib_event_type event)
