@@ -65,33 +65,15 @@ PRE_CFLAGS = $(OFED_CFLAGS) $(HAVE_IB_CQ_INIT_ATTR) $(HAVE_IB_INC_RKEY) $(HAVE_P
 
 all: check
 	@m="$(shell pwd)/drivers/scsi/$(MODULE_SYMVERS)";	   	   \
-	cat <"$(KDIR)/$(MODULE_SYMVERS)" >"$$m";			   \
-	cat /dev/null $(OFED_MODULE_SYMVERS) |				   \
-	while read line; do						   \
-	    set -- $$line;						   \
-	    csum="$$1";							   \
-	    sym="$$2";							   \
-	    if ! grep -q "^$$csum[[:blank:]]*$$sym[[:blank:]]" "$$m"; then \
-		sed -i.tmp -e "/^[[:blank:]]*$$sym[[:blank:]]/d" "$$m"; \
-		echo "$$line" >>"$$m";					   \
-	    fi								   \
-	done
+	cat "$(KDIR)/$(MODULE_SYMVERS)" $(OFED_MODULE_SYMVERS) |	   \
+	awk '{sym[$$2]=$$0} END {for (s in sym){print sym[s]}}' >"$$m";    \
 	CONFIG_SCSI_SRP_ATTRS=m						   \
 		$(MAKE) -C $(KDIR) M=$(shell pwd)/drivers/scsi		   \
 		PRE_CFLAGS="$(PRE_CFLAGS)" modules
 	@m="$(shell pwd)/drivers/infiniband/ulp/srp/$(MODULE_SYMVERS)";	   \
-	cat <"$(KDIR)/$(MODULE_SYMVERS)" >"$$m";			   \
-	cat $(OFED_MODULE_SYMVERS)					   \
+	cat "$(KDIR)/$(MODULE_SYMVERS)" $(OFED_MODULE_SYMVERS)		   \
 		"$(shell pwd)/drivers/scsi/$(MODULE_SYMVERS)" |		   \
-	while read line; do						   \
-	    set -- $$line;						   \
-	    csum="$$1";							   \
-	    sym="$$2";							   \
-	    if ! grep -q "^$$csum[[:blank:]]*$$sym[[:blank:]]" "$$m"; then \
-		sed -i.tmp -e "/^[[:blank:]]*$$sym[[:blank:]]/d" "$$m"; \
-		echo "$$line" >>"$$m";					   \
-	    fi								   \
-	done
+	awk '{sym[$$2]=$$0} END {for (s in sym){print sym[s]}}' >"$$m";	   \
 	CONFIG_SCSI_SRP_ATTRS=m CONFIG_SCSI_SRP=m CONFIG_INFINIBAND_SRP=m  \
 	$(MAKE) -C $(KDIR) M=$(shell pwd)/drivers/infiniband/ulp/srp	   \
 	    PRE_CFLAGS="$(PRE_CFLAGS)" modules
@@ -100,7 +82,7 @@ install: all
 	for d in drivers/scsi drivers/infiniband/ulp/srp; do	   	   \
 	  $(MAKE) -C $(KDIR) SUBDIRS="$(shell pwd)/$$d"			   \
           $$([ -n "$(INSTALL_MOD_PATH)" ] && echo DEPMOD=true)		   \
-	  PRE_CFLAGS="$(PRE_CFLAGS)" modules_install;			   \
+	  modules_install;			   			   \
 	done
 
 uninstall:
