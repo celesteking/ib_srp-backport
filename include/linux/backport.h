@@ -167,13 +167,15 @@ ib_wc_status_msg(enum ib_wc_status status)
 }
 #endif
 
-#if !defined(HAVE_IB_CQ_INIT_ATTR)
+#if !defined(HAVE_IB_CREATE_CQ_ATTR_ARG)
 /* See also commit bcf4c1ea */
+#if !defined(HAVE_IB_CQ_INIT_ATTR)
 struct ib_cq_init_attr {
 	unsigned int	cqe;
 	int		comp_vector;
 	u32		flags;
 };
+#endif
 
 static inline struct ib_cq *ib_create_cq_compat(struct ib_device *device,
 			ib_comp_handler comp_handler,
