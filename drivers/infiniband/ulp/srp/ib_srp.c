@@ -923,6 +923,10 @@ static u8 srp_get_subnet_timeout(struct srp_host *host)
 	if (ret == 0)
 		subnet_timeout = attr.subnet_timeout;
 
+	if (unlikely(subnet_timeout < 15))
+		pr_warn("%s: subnet timeout %d may cause SRP login to fail.\n",
+			dev_name(&host->srp_dev->dev->dev), subnet_timeout);
+
 	return subnet_timeout;
 }
 
