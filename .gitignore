@@ -1,3 +1,4 @@
+*.ctf
 *.ko
 *.ko.cmd
 *.ko.unsigned
@@ -5,6 +6,8 @@
 *.mod.c
 *.o
 *.o.cmd
+*.sdtinfo.c
 .tmp_versions/
 Module.symvers
+Module.symvers.tmp
 modules.order
