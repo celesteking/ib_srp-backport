@@ -28,7 +28,9 @@
  * is not present in the openSUSE 12.3 kernel desipite having version number
  * 3.7.10.
  */
+#ifndef HAVE_REQUEST_QUEUE_REQUEST_FN_ACTIVE
 #define HAVE_REQUEST_QUEUE_REQUEST_FN_ACTIVE
+#endif
 #endif
 
 /* <linux/kernel.h> */
