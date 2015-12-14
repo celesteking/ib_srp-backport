@@ -99,6 +99,27 @@ static inline int in4_pton(const char *src, int srclen, u8 *dst, int delim,
 typedef unsigned long uintptr_t;
 #endif
 
+/* <rdma/ib_sa.h> */
+#if defined(HAVE_IB_SA_PATH_REC_GET_MASK_ARG)
+static inline int ib_sa_path_rec_get_compat(struct ib_sa_client *client,
+					    struct ib_device *device,
+					    u8 port_num,
+					    struct ib_sa_path_rec *rec,
+					    ib_sa_comp_mask comp_mask,
+					    int timeout_ms, int retries,
+					    void (*callback)(int status,
+						struct ib_sa_path_rec *resp,
+						void *context),
+					    void *context,
+					    struct ib_sa_query **query)
+{
+	return ib_sa_path_rec_get(client, device, port_num, rec, comp_mask,
+				  timeout_ms, retries, GFP_KERNEL, callback,
+				  context, query);
+}
+#define ib_sa_path_rec_get ib_sa_path_rec_get_compat
+#endif
+
 /* <rdma/ib_verbs.h> */
 /* commit 7083e42e */
 #if !defined(HAVE_IB_INC_RKEY)
