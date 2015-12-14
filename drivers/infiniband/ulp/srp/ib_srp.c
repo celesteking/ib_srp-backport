@@ -1603,7 +1603,7 @@ static int srp_map_finish_fmr(struct srp_map_state *state,
 		goto reset_state;
 	}
 
-#if defined(CONFIG_ORACLEASM_MODULE) && defined(CONFIG_INFINIBAND_SDP_MODULE)
+#if defined(HAVE_IB_FMR_POOL_MAP_PHYS_ARG5)
 	/*
 	 * With Oracle UEK Linux kernel revision 400 ib_fmr_pool_map_phys()
 	 * takes five arguments. With revision 200 ib_fmr_pool_map_phys()
