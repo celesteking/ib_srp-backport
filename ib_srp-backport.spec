@@ -11,7 +11,7 @@
 	)}
 
 Name:		%{kmod_name}-%{kversion}
-Version:	2.0.36
+Version:	2.0.37
 Release:	1
 Summary:	%{kmod_name} kernel modules
 Group:		System/Kernel
@@ -69,6 +69,8 @@ depmod %{kversion}
 /lib/modules/%{kversion}/extra/%{kmod_name}/*.ko
 
 %changelog
+* Mon Jan 25 2016 Bart Van Assche <bart.vanassche@sandisk.com> - 2.0.37
+- Log a warning if the IB subnet timeout is too low.
 * Thu Dec 10 2015 Bart Van Assche <bart.vanassche@sandisk.com> - 2.0.36
 - Fixed a memory leak that could be triggered by SRP login.
 - Ported this driver to Linux kernel v4.4, to RHEL 7.2 and also to MOFED 3.1.1.
