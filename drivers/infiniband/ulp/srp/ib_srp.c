@@ -3849,6 +3849,9 @@ static bool srp_conn_unique(struct srp_host *host,
 		if (t != target &&
 		    target->id_ext == t->id_ext &&
 		    target->ioc_guid == t->ioc_guid &&
+		    (!target->using_rdma_cm ||
+		     memcmp(&target->rdma_cm.dst, &t->rdma_cm.dst,
+			    sizeof(target->rdma_cm.dst)) == 0) &&
 		    target->initiator_ext == t->initiator_ext) {
 			ret = false;
 			break;
@@ -4261,11 +4264,22 @@ static ssize_t srp_create_target(struct device *dev,
 	target->req_ring_size = target->queue_size - SRP_TSK_MGMT_SQ_SIZE;
 
 	if (!srp_conn_unique(target->srp_host, target)) {
-		shost_printk(KERN_INFO, target->scsi_host,
-			     PFX "Already connected to target port with id_ext=%016llx;ioc_guid=%016llx;initiator_ext=%016llx\n",
-			     be64_to_cpu(target->id_ext),
-			     be64_to_cpu(target->ioc_guid),
-			     be64_to_cpu(target->initiator_ext));
+		if (target->using_rdma_cm) {
+			char dst_addr[64];
+
+			shost_printk(KERN_INFO, target->scsi_host,
+				     PFX "Already connected to target port with id_ext=%016llx;ioc_guid=%016llx;dest=%s\n",
+				     be64_to_cpu(target->id_ext),
+				     be64_to_cpu(target->ioc_guid),
+				     inet_ntop(&target->rdma_cm.dst, dst_addr,
+					       sizeof(dst_addr)));
+		} else {
+			shost_printk(KERN_INFO, target->scsi_host,
+				     PFX "Already connected to target port with id_ext=%016llx;ioc_guid=%016llx;initiator_ext=%016llx\n",
+				     be64_to_cpu(target->id_ext),
+				     be64_to_cpu(target->ioc_guid),
+				     be64_to_cpu(target->initiator_ext));
+		}
 		ret = -EEXIST;
 		goto out;
 	}
