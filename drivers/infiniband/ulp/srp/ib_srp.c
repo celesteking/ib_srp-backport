@@ -940,10 +940,7 @@ static int srp_send_req(struct srp_rdma_ch *ch, bool multich)
 		struct srp_login_req	  ib_req;
 	} *req = NULL;
 	char *ipi, *tpi;
-	u8 subnet_timeout;
 	int status;
-
-	subnet_timeout = srp_get_subnet_timeout(target->srp_host);
 
 	req = kzalloc(sizeof *req, GFP_KERNEL);
 	if (!req)
@@ -988,6 +985,10 @@ static int srp_send_req(struct srp_rdma_ch *ch, bool multich)
 		ipi = req->rdma_req.initiator_port_id;
 		tpi = req->rdma_req.target_port_id;
 	} else {
+		u8 subnet_timeout;
+
+		subnet_timeout = srp_get_subnet_timeout(target->srp_host);
+
 		req->ib_param.primary_path = &ch->ib_cm.path;
 		req->ib_param.alternate_path = NULL;
 		req->ib_param.service_id = target->ib_cm.service_id;
