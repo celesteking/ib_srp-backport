@@ -705,7 +705,8 @@ static int srp_create_ch_ib(struct srp_rdma_ch *ch)
 		}
 	}
 	if (ret) {
-		pr_err("QP creation failed: %d\n", ret);
+		pr_err("QP creation failed for dev %s: %d\n",
+		       dev_name(&dev->dev->dev), ret);
 		goto err_send_cq;
 	}
 
