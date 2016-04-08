@@ -273,7 +273,12 @@ struct srp_target_port {
 			union {
 				struct sockaddr_in	ip4;
 				struct sockaddr_in6	ip6;
+			} src;
+			union {
+				struct sockaddr_in	ip4;
+				struct sockaddr_in6	ip6;
 			} dst;
+			bool src_specified;
 		} rdma_cm;
 	};
 

@@ -418,7 +418,7 @@ static int srp_new_rdma_cm_id(struct srp_rdma_ch *ch)
 {
 	struct srp_target_port *target = ch->target;
 	struct rdma_cm_id *new_cm_id;
-	char addr[64];
+	char src_addr[64], dst_addr[64];
 	int ret;
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 0, 0) && \
@@ -438,12 +438,17 @@ static int srp_new_rdma_cm_id(struct srp_rdma_ch *ch)
 	}
 
 	init_completion(&ch->done);
-	ret = rdma_resolve_addr(new_cm_id, NULL,
+	ret = rdma_resolve_addr(new_cm_id, target->rdma_cm.src_specified ?
+				(struct sockaddr *)&target->rdma_cm.src : NULL,
 				(struct sockaddr *)&target->rdma_cm.dst,
 				SRP_PATH_REC_TIMEOUT_MS);
 	if (ret) {
-		pr_err("No route available to address %s (%d)\n",
-		       inet_ntop(&target->rdma_cm.dst, addr, sizeof(addr)),
+		pr_err("No route available from %s to %s (%d)\n",
+		       target->rdma_cm.src_specified ?
+		       inet_ntop(&target->rdma_cm.src, src_addr,
+				 sizeof(src_addr)) : "(any)",
+		       inet_ntop(&target->rdma_cm.dst, dst_addr,
+				 sizeof(dst_addr)),
 		       ret);
 		goto out;
 	}
@@ -454,7 +459,8 @@ static int srp_new_rdma_cm_id(struct srp_rdma_ch *ch)
 	ret = ch->status;
 	if (ret) {
 		pr_err("Resolving address %s failed (%d)\n",
-		       inet_ntop(&target->rdma_cm.dst, addr, sizeof(addr)),
+		       inet_ntop(&target->rdma_cm.dst, dst_addr,
+				 sizeof(dst_addr)),
 		       ret);
 		goto out;
 	}
@@ -3861,7 +3867,7 @@ out:
  *     pkey=<P_Key>,service_id=<service ID>
  * or
  *     id_ext=<SRP ID ext>,ioc_guid=<SRP IOC GUID>,
- *     dest=<IPv4 address>:<port number>
+ *     [src=<IPv4 address>,]dest=<IPv4 address>:<port number>
  *
  * to the add_target sysfs attribute.
  */
@@ -3882,7 +3888,8 @@ enum {
 	SRP_OPT_COMP_VECTOR	= 1 << 12,
 	SRP_OPT_TL_RETRY_COUNT	= 1 << 13,
 	SRP_OPT_QUEUE_SIZE	= 1 << 14,
-	SRP_OPT_IP_DEST		= 1 << 15,
+	SRP_OPT_IP_SRC		= 1 << 15,
+	SRP_OPT_IP_DEST		= 1 << 16,
 };
 
 static unsigned srp_opt_mandatory[] = {
@@ -3916,6 +3923,7 @@ static const match_table_t srp_opt_tokens = {
 	{ SRP_OPT_COMP_VECTOR,		"comp_vector=%u"	},
 	{ SRP_OPT_TL_RETRY_COUNT,	"tl_retry_count=%u"	},
 	{ SRP_OPT_QUEUE_SIZE,		"queue_size=%d"		},
+	{ SRP_OPT_IP_SRC,		"src=%s"		},
 	{ SRP_OPT_IP_DEST,		"dest=%s"		},
 	{ SRP_OPT_ERR,			NULL 			}
 };
@@ -4021,6 +4029,24 @@ static int srp_parse_options(const char *buf, struct srp_target_port *target)
 			}
 			target->ib_cm.service_id =
 				cpu_to_be64(simple_strtoull(p, NULL, 16));
+			kfree(p);
+			break;
+
+		case SRP_OPT_IP_SRC:
+			p = match_strdup(args);
+			if (!p) {
+				ret = -ENOMEM;
+				goto out;
+			}
+			if (!in4_pton(p, -1,
+				      (u8 *)&target->rdma_cm.src.ip4.sin_addr,
+				      -1, NULL)) {
+				pr_warn("bad source parameter '%s'\n", p);
+				kfree(p);
+				goto out;
+			}
+			target->rdma_cm.src.ip4.sin_family = AF_INET;
+			target->rdma_cm.src_specified = true;
 			kfree(p);
 			break;
 
