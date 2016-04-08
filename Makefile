@@ -128,14 +128,18 @@ check:
 	fi
 
 dist-gzip:
-	mkdir ib_srp-backport-$(VERSION) &&		\
-	{ git ls-tree --name-only -r HEAD	|	\
-	  tar -T- -cf- |				\
-	  tar -C ib_srp-backport-$(VERSION) -xf-; } &&	\
-	rm -f ib_srp-backport-$(VERSION).tar.bz2 &&	\
-	tar --owner=root --group=root			\
-	    -cjf ib_srp-backport-$(VERSION).tar.bz2	\
-		ib_srp-backport-$(VERSION) &&		\
+	mkdir ib_srp-backport-$(VERSION) &&			\
+	{							\
+	  {							\
+	    git ls-tree --name-only -r HEAD 2>/dev/null	||	\
+	    hg manifest;					\
+	  } |							\
+	  tar -T- -cf- |					\
+	  tar -C ib_srp-backport-$(VERSION) -xf-; } &&		\
+	rm -f ib_srp-backport-$(VERSION).tar.bz2 &&		\
+	tar --owner=root --group=root				\
+	    -cjf ib_srp-backport-$(VERSION).tar.bz2		\
+		ib_srp-backport-$(VERSION) &&			\
 	rm -rf ib_srp-backport-$(VERSION)
 
 # Build an RPM either for the running kernel or for kernel version $KVER.
