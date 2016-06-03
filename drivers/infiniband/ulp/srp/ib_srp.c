@@ -1917,7 +1917,6 @@ static int srp_map_sg_fr(struct srp_map_state *state, struct srp_rdma_ch *ch,
 #else
 	unsigned int sg_offset = 0;
 
-	state->desc = req->indirect_desc;
 	state->fr.next = req->fr_list;
 	state->fr.end = req->fr_list + ch->target->mr_per_cmd;
 	state->sg = scat;
@@ -1950,7 +1949,6 @@ static int srp_map_sg_dma(struct srp_map_state *state, struct srp_rdma_ch *ch,
 	struct scatterlist *sg;
 	int i;
 
-	state->desc = req->indirect_desc;
 	for_each_sg(scat, sg, count, i) {
 		srp_map_desc(state, ib_sg_dma_address(dev->dev, sg),
 			     ib_sg_dma_len(dev->dev, sg),
@@ -2157,6 +2155,7 @@ static int srp_map_data(struct scsi_cmnd *scmnd, struct srp_rdma_ch *ch,
 				   target->indirect_size, DMA_TO_DEVICE);
 
 	memset(&state, 0, sizeof(state));
+	state.desc = req->indirect_desc;
 	if (dev->use_fast_reg)
 		ret = srp_map_sg_fr(&state, ch, req, scat, count);
 	else if (dev->use_fmr)
