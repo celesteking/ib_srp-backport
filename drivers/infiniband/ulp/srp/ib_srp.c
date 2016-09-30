@@ -4564,19 +4564,23 @@ free_host:
 static void srp_add_one(struct ib_device *device)
 {
 	struct srp_device *srp_dev;
-	struct ib_device_attr *dev_attr;
+	struct ib_device_attr *attr;
 	struct srp_host *host;
 	int mr_page_shift, p;
 	u64 max_pages_per_mr;
 
-	dev_attr = kmalloc(sizeof *dev_attr, GFP_KERNEL);
-	if (!dev_attr)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
+	attr = kmalloc(sizeof(*attr), GFP_KERNEL);
+	if (!attr)
 		return;
 
-	if (ib_query_device(device, dev_attr)) {
+	if (ib_query_device(device, attr)) {
 		pr_warn("Query device failed for %s\n", device->name);
 		goto free_attr;
 	}
+#else
+	attr = &device->attrs;
+#endif
 
 	srp_dev = kmalloc(sizeof *srp_dev, GFP_KERNEL);
 	if (!srp_dev)
@@ -4584,7 +4588,7 @@ static void srp_add_one(struct ib_device *device)
 
 	srp_dev->has_fmr = (device->alloc_fmr && device->dealloc_fmr &&
 			    device->map_phys_fmr && device->unmap_fmr);
-	srp_dev->has_fr = (dev_attr->device_cap_flags &
+	srp_dev->has_fr = (attr->device_cap_flags &
 			   IB_DEVICE_MEM_MGT_EXTENSIONS);
 	if (!srp_dev->has_fmr && !srp_dev->has_fr)
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(2, 6, 18)
@@ -4602,23 +4606,23 @@ static void srp_add_one(struct ib_device *device)
 	 * minimum of 4096 bytes. We're unlikely to build large sglists
 	 * out of smaller entries.
 	 */
-	mr_page_shift		= max(12, ffs(dev_attr->page_size_cap) - 1);
+	mr_page_shift		= max(12, ffs(attr->page_size_cap) - 1);
 	srp_dev->mr_page_size	= 1 << mr_page_shift;
 	srp_dev->mr_page_mask	= ~((u64) srp_dev->mr_page_size - 1);
-	max_pages_per_mr	= dev_attr->max_mr_size;
+	max_pages_per_mr	= attr->max_mr_size;
 	do_div(max_pages_per_mr, srp_dev->mr_page_size);
 	srp_dev->max_pages_per_mr = min_t(u64, SRP_MAX_PAGES_PER_MR,
 					  max_pages_per_mr);
 	if (srp_dev->use_fast_reg) {
 		srp_dev->max_pages_per_mr =
 			min_t(u32, srp_dev->max_pages_per_mr,
-			      dev_attr->max_fast_reg_page_list_len);
+			      attr->max_fast_reg_page_list_len);
 	}
 	srp_dev->mr_max_size	= srp_dev->mr_page_size *
 				   srp_dev->max_pages_per_mr;
-	pr_debug("%s: mr_page_shift = %d, dev_attr->max_mr_size = %#llx, dev_attr->max_fast_reg_page_list_len = %u, max_pages_per_mr = %d, mr_max_size = %#x\n",
-		 device->name, mr_page_shift, dev_attr->max_mr_size,
-		 dev_attr->max_fast_reg_page_list_len,
+	pr_debug("%s: mr_page_shift = %d, device->max_mr_size = %#llx, device->max_fast_reg_page_list_len = %u, max_pages_per_mr = %d, mr_max_size = %#x\n",
+		 device->name, mr_page_shift, attr->max_mr_size,
+		 attr->max_fast_reg_page_list_len,
 		 srp_dev->max_pages_per_mr, srp_dev->mr_max_size);
 
 	INIT_LIST_HEAD(&srp_dev->dev_list);
@@ -4657,7 +4661,11 @@ free_dev:
 	kfree(srp_dev);
 
 free_attr:
-	kfree(dev_attr);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
+	kfree(attr);
+#else
+	;
+#endif
 }
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 3, 0)
