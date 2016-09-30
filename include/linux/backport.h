@@ -263,6 +263,15 @@ struct rdma_cm_id *rdma_create_id_compat(rdma_cm_event_handler event_handler,
 #define SDEV_TRANSPORT_OFFLINE SDEV_OFFLINE
 #endif
 
+/* See also commit 1d64508810d8 */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 7, 0)
+enum scsi_scan_mode {
+	SCSI_SCAN_INITIAL = 0,
+	SCSI_SCAN_RESCAN,
+	SCSI_SCAN_MANUAL,
+};
+#endif
+
 static inline void scsi_target_unblock_compat(struct device *dev,
 					      enum scsi_device_state new_state)
 {
