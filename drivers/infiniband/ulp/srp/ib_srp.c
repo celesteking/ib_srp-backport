@@ -1742,7 +1742,11 @@ static int srp_map_finish_fr(struct srp_map_state *state,
 	rkey = ib_inc_rkey(desc->mr->rkey);
 	ib_update_fast_reg_key(desc->mr, rkey);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 7, 0)
 	n = ib_map_mr_sg(desc->mr, state->sg, sg_nents, dev->mr_page_size);
+#else
+	n = ib_map_mr_sg(desc->mr, state->sg, sg_nents, 0, dev->mr_page_size);
+#endif
 	if (unlikely(n < 0))
 		return n;
 
