@@ -1702,8 +1702,11 @@ static int srp_map_finish_fr(struct srp_map_state *state,
 		     desc->mr->rkey);
 
 	err = ib_post_send(ch->qp, &wr, &bad_wr);
-	if (unlikely(err))
+	if (unlikely(err)) {
+		srp_fr_pool_put(ch->fr_pool, &desc, 1);
+		pr_debug("ib_post_send() returned %d.\n", err);
 		return err;
+	}
 
 reset_state:
 	state->npages = 0;
@@ -1713,6 +1716,7 @@ reset_state:
 }
 #else /* LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) */
 static int srp_map_finish_fr(struct srp_map_state *state,
+			     struct srp_request *req,
 			     struct srp_rdma_ch *ch, int sg_nents)
 {
 	struct srp_target_port *target = ch->target;
@@ -1747,8 +1751,13 @@ static int srp_map_finish_fr(struct srp_map_state *state,
 #else
 	n = ib_map_mr_sg(desc->mr, state->sg, sg_nents, 0, dev->mr_page_size);
 #endif
-	if (unlikely(n < 0))
+	if (unlikely(n < 0)) {
+		srp_fr_pool_put(ch->fr_pool, &desc, 1);
+		pr_debug("%s: ib_map_mr_sg(%d) returned %d.\n",
+			 dev_name(&req->scmnd->device->sdev_gendev), sg_nents,
+			 n);
 		return n;
+	}
 
 	wr.wr.next = NULL;
 	wr.wr.opcode = IB_WR_REG_MR;
@@ -1896,7 +1905,7 @@ static int srp_map_sg_fr(struct srp_map_state *state, struct srp_rdma_ch *ch,
 	while (count) {
 		int i, n;
 
-		n = srp_map_finish_fr(state, ch, count);
+		n = srp_map_finish_fr(state, req, ch, count);
 		if (unlikely(n < 0))
 			return n;
 
@@ -1975,7 +1984,7 @@ static int srp_map_idb(struct srp_rdma_ch *ch, struct srp_request *req,
 #ifdef CONFIG_NEED_SG_DMA_LENGTH
 		idb_sg->dma_length = idb_sg->length;	      /* hack^2 */
 #endif
-		ret = srp_map_finish_fr(&state, ch, 1);
+		ret = srp_map_finish_fr(&state, req, ch, 1);
 		if (ret < 0)
 			return ret;
 	} else if (dev->use_fmr) {
