@@ -619,13 +619,13 @@ static struct srp_fr_pool *srp_alloc_fr_pool(struct srp_target_port *target)
  * srp_destroy_qp() - destroy an RDMA queue pair
  * @ch: SRP RDMA channel.
  *
- * Change a queue pair into the error state and wait until all receive
- * completions have been processed before destroying it. This avoids that
- * the receive completion handler can access the queue pair while it is
+ * Drain the qp before destroying it.  This avoids that the receive
+ * completion handler can access the queue pair while it is
  * being destroyed.
  */
 static void srp_destroy_qp(struct srp_rdma_ch *ch)
 {
+#if 1
 	static struct ib_qp_attr attr = { .qp_state = IB_QPS_ERR };
 	static struct ib_recv_wr wr = { .wr_id = SRP_LAST_WR_ID };
 	struct ib_recv_wr *bad_wr;
@@ -646,6 +646,9 @@ static void srp_destroy_qp(struct srp_rdma_ch *ch)
 		wait_for_completion(&ch->done);
 
 out:
+#else
+	ib_drain_rq(ch->qp);
+#endif
 	ib_destroy_qp(ch->qp);
 }
 
@@ -666,7 +669,7 @@ static int srp_create_ch_ib(struct srp_rdma_ch *ch)
 	if (!init_attr)
 		return -ENOMEM;
 
-	/* + 1 for SRP_LAST_WR_ID */
+	/* + 1 for ib_drain_rq() */
 	cq_attr.cqe = target->queue_size + 1;
 	cq_attr.comp_vector = ch->comp_vector;
 	recv_cq = ib_create_cq(dev->dev, srp_recv_completion, NULL, ch,
