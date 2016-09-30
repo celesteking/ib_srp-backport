@@ -1711,7 +1711,7 @@ reset_state:
 }
 #else /* LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) */
 static int srp_map_finish_fr(struct srp_map_state *state,
-			     struct srp_rdma_ch *ch, int count)
+			     struct srp_rdma_ch *ch, int sg_nents)
 {
 	struct srp_target_port *target = ch->target;
 	struct srp_device *dev = target->srp_host->srp_dev;
@@ -1726,10 +1726,10 @@ static int srp_map_finish_fr(struct srp_map_state *state,
 
 	WARN_ON_ONCE(!dev->use_fast_reg);
 
-	if (count == 0)
+	if (sg_nents == 0)
 		return 0;
 
-	if (count == 1 && target->global_mr) {
+	if (sg_nents == 1 && target->global_mr) {
 		srp_map_desc(state, sg_dma_address(state->sg),
 			     sg_dma_len(state->sg),
 			     target->global_mr->rkey);
@@ -1743,7 +1743,7 @@ static int srp_map_finish_fr(struct srp_map_state *state,
 	rkey = ib_inc_rkey(desc->mr->rkey);
 	ib_update_fast_reg_key(desc->mr, rkey);
 
-	n = ib_map_mr_sg(desc->mr, state->sg, count, dev->mr_page_size);
+	n = ib_map_mr_sg(desc->mr, state->sg, sg_nents, dev->mr_page_size);
 	if (unlikely(n < 0))
 		return n;
 
