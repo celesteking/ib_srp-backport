@@ -1749,7 +1749,7 @@ static int srp_map_finish_fr(struct srp_map_state *state,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 7, 0)
 	n = ib_map_mr_sg(desc->mr, state->sg, sg_nents, dev->mr_page_size);
 #else
-	n = ib_map_mr_sg(desc->mr, state->sg, sg_nents, 0, dev->mr_page_size);
+	n = ib_map_mr_sg(desc->mr, state->sg, sg_nents, NULL, dev->mr_page_size);
 #endif
 	if (unlikely(n < 0)) {
 		srp_fr_pool_put(ch->fr_pool, &desc, 1);
