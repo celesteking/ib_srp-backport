@@ -256,6 +256,11 @@ struct rdma_cm_id *rdma_create_id_compat(rdma_cm_event_handler event_handler,
 #define SCSI_MAX_SG_CHAIN_SEGMENTS (PAGE_SIZE / sizeof(void*))
 #endif
 
+/* See also commit 65e8617fba17 */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 7, 0)
+#define SG_MAX_SEGMENTS SCSI_MAX_SG_CHAIN_SEGMENTS
+#endif
+
 /* <scsi/scsi_device.h> */
 /* See also commit 5d9fb5cc */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 5, 0) && \

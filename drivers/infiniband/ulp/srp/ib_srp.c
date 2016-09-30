@@ -99,7 +99,7 @@ MODULE_PARM_DESC(cmd_sg_entries,
 
 module_param(indirect_sg_entries, uint, 0444);
 MODULE_PARM_DESC(indirect_sg_entries,
-		 "Default max number of gather/scatter entries (default is 12, max is " __stringify(SCSI_MAX_SG_CHAIN_SEGMENTS) ")");
+		 "Default max number of gather/scatter entries (default is 12, max is " __stringify(SG_MAX_SEGMENTS) ")");
 
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(2, 6, 18)
 module_param(allow_ext_sg, int, 0444);
@@ -4144,7 +4144,7 @@ static int srp_parse_options(const char *buf, struct srp_target_port *target)
 
 		case SRP_OPT_SG_TABLESIZE:
 			if (match_int(args, &token) || token < 1 ||
-					token > SCSI_MAX_SG_CHAIN_SEGMENTS) {
+					token > SG_MAX_SEGMENTS) {
 				pr_warn("bad max sg_tablesize parameter '%s'\n",
 					p);
 				goto out;
