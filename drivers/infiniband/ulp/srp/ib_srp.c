@@ -4605,6 +4605,19 @@ static void srp_add_one(struct ib_device *device)
 	if (!srp_dev)
 		goto free_attr;
 
+	/*
+	 * Use the smallest page size supported by the HCA, down to a
+	 * minimum of 4096 bytes. We're unlikely to build large sglists
+	 * out of smaller entries.
+	 */
+	mr_page_shift		= max(12, ffs(attr->page_size_cap) - 1);
+	srp_dev->mr_page_size	= 1 << mr_page_shift;
+	srp_dev->mr_page_mask	= ~((u64) srp_dev->mr_page_size - 1);
+	max_pages_per_mr	= attr->max_mr_size;
+	do_div(max_pages_per_mr, srp_dev->mr_page_size);
+	srp_dev->max_pages_per_mr = min_t(u64, SRP_MAX_PAGES_PER_MR,
+					  max_pages_per_mr);
+
 	srp_dev->has_fmr = (device->alloc_fmr && device->dealloc_fmr &&
 			    device->map_phys_fmr && device->unmap_fmr);
 	srp_dev->has_fr = (attr->device_cap_flags &
@@ -4620,18 +4633,6 @@ static void srp_add_one(struct ib_device *device)
 				 (!srp_dev->has_fmr || prefer_fr));
 	srp_dev->use_fmr = !srp_dev->use_fast_reg && srp_dev->has_fmr;
 
-	/*
-	 * Use the smallest page size supported by the HCA, down to a
-	 * minimum of 4096 bytes. We're unlikely to build large sglists
-	 * out of smaller entries.
-	 */
-	mr_page_shift		= max(12, ffs(attr->page_size_cap) - 1);
-	srp_dev->mr_page_size	= 1 << mr_page_shift;
-	srp_dev->mr_page_mask	= ~((u64) srp_dev->mr_page_size - 1);
-	max_pages_per_mr	= attr->max_mr_size;
-	do_div(max_pages_per_mr, srp_dev->mr_page_size);
-	srp_dev->max_pages_per_mr = min_t(u64, SRP_MAX_PAGES_PER_MR,
-					  max_pages_per_mr);
 	if (srp_dev->use_fast_reg) {
 		srp_dev->max_pages_per_mr =
 			min_t(u32, srp_dev->max_pages_per_mr,
