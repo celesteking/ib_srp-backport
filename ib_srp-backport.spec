@@ -11,7 +11,7 @@
 	)}
 
 Name:		%{kmod_name}-%{kversion}
-Version:	2.0.37
+Version:	2.0.38
 Release:	1
 Summary:	%{kmod_name} kernel modules
 Group:		System/Kernel
@@ -69,6 +69,14 @@ depmod %{kversion}
 /lib/modules/%{kversion}/extra/%{kmod_name}/*.ko
 
 %changelog
+* Fri Oct 7 2016 Bart Van Assche <bart.vanassche@sandisk.com> - 2.0.38
+- Improved support for large request sizes (e.g. 4 MB) on kernel v4.3 and above.
+- Fixed memory mapping error paths.
+- Fixed the code for FMR memory registration with non-zero offset of the first
+  SGL-element.
+- Added the 'never_register' kernel module parameter.
+- Reduced the time needed to build the ib_srp-backport driver.
+- Ported this driver to Linux kernel v4.8.
 * Mon Jan 25 2016 Bart Van Assche <bart.vanassche@sandisk.com> - 2.0.37
 - Log a warning if the IB subnet timeout is too low.
 * Thu Dec 10 2015 Bart Van Assche <bart.vanassche@sandisk.com> - 2.0.36
