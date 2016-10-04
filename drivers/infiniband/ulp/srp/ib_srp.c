@@ -83,10 +83,12 @@ static unsigned int indirect_sg_entries;
 static int allow_ext_sg;
 static int prefer_fr = true;
 static int register_always;
+static int never_register;
 #else
 static bool allow_ext_sg;
 static bool prefer_fr = true;
 static bool register_always;
+static bool never_register;
 #endif
 static int topspin_workarounds = 1;
 
@@ -128,6 +130,9 @@ module_param(register_always, bool, 0444);
 #endif
 MODULE_PARM_DESC(register_always,
 		 "Use memory registration even for contiguous memory regions");
+
+module_param(never_register, bool, 0444);
+MODULE_PARM_DESC(never_register, "Never register memory");
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 36)
 static const struct kernel_param_ops srp_tmo_ops;
@@ -4727,13 +4732,14 @@ static void srp_add_one(struct ib_device *device)
 			    device->map_phys_fmr && device->unmap_fmr);
 	srp_dev->has_fr = (attr->device_cap_flags &
 			   IB_DEVICE_MEM_MGT_EXTENSIONS);
-	if (!srp_dev->has_fmr && !srp_dev->has_fr) {
+	if (!never_register && !srp_dev->has_fmr && !srp_dev->has_fr) {
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(2, 6, 18)
 		dev_warn(device->dma_device, "neither FMR nor FR is supported\n");
 #else
 		dev_warn(&device->dev, "neither FMR nor FR is supported\n");
 #endif
-	} else if (attr->max_mr_size >= 2 * srp_dev->mr_page_size) {
+	} else if (!never_register &&
+		   attr->max_mr_size >= 2 * srp_dev->mr_page_size) {
 		srp_dev->use_fast_reg = (srp_dev->has_fr &&
 					 (!srp_dev->has_fmr || prefer_fr));
 		srp_dev->use_fmr = !srp_dev->use_fast_reg && srp_dev->has_fmr;
@@ -4758,7 +4764,8 @@ static void srp_add_one(struct ib_device *device)
 	if (IS_ERR(srp_dev->pd))
 		goto free_dev;
 
-	if (!register_always || (!srp_dev->has_fmr && !srp_dev->has_fr) ||
+	if (never_register || !register_always ||
+	    (!srp_dev->has_fmr && !srp_dev->has_fr) ||
 	    !HAVE_PD_LOCAL_DMA_LKEY) {
 		srp_dev->global_mr = ib_get_dma_mr(srp_dev->pd,
 						   IB_ACCESS_LOCAL_WRITE |
