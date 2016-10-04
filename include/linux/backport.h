@@ -171,9 +171,10 @@ static inline struct ib_mr *ib_alloc_mr(struct ib_pd *pd,
 }
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 2, 0) &&   \
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 2, 0) &&  \
 	(!defined(RHEL_MAJOR) || RHEL_MAJOR -0 < 7 || \
-	 RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 2)
+	 RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 2)) || \
+	defined(MOFED_MAJOR)
 /* See also commit 2b1b5b60 */
 static inline const char *__attribute_const__
 ib_event_msg(enum ib_event_type event)
