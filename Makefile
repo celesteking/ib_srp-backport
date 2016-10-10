@@ -42,6 +42,7 @@ OFED_KERNEL_DIR:=/usr/src/ofa_kernel/default
 OFED_VERS=$(shell rpm -q --qf '%{version}\n' mlnx-ofa_kernel-devel 2>/dev/null)
 OFED_CFLAGS:=-I$(OFED_KERNEL_DIR)/include -include "linux/compat-2.6.h"
 OFED_CFLAGS+=-DMOFED_MAJOR=$(shell echo $(OFED_VERS) | cut -f1 -d.)
+OFED_CFLAGS+=-DMOFED_MINOR=$(shell echo $(OFED_VERS) | cut -f2 -d.)
 else
 # OFED 1.5
 OFED_KERNEL_DIR:=/usr/src/ofa_kernel
