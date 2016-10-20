@@ -634,12 +634,14 @@ static void srp_destroy_qp(struct srp_rdma_ch *ch)
 {
 #if 1
 	static struct ib_qp_attr attr = { .qp_state = IB_QPS_ERR };
-	static struct ib_recv_wr wr = { .wr_id = SRP_LAST_WR_ID };
+	static struct ib_recv_wr wr = { 0 };
 	struct ib_recv_wr *bad_wr;
 	int ret;
 
 	/* Destroying a QP and reusing ch->done is only safe if not connected */
 	WARN_ON_ONCE(ch->connected);
+
+	wr.wr_id = SRP_LAST_WR_ID;
 
 	ret = ib_modify_qp(ch->qp, &attr, IB_QP_STATE);
 	WARN_ONCE(ret, "ib_cm_init_qp_attr() returned %d\n", ret);
@@ -1361,12 +1363,13 @@ static int srp_inv_rkey(struct srp_rdma_ch *ch, u32 rkey)
 	struct ib_send_wr *bad_wr;
 	struct ib_send_wr wr = {
 		.opcode		    = IB_WR_LOCAL_INV,
-		.wr_id		    = LOCAL_INV_WR_ID_MASK,
 		.next		    = NULL,
 		.num_sge	    = 0,
 		.send_flags	    = 0,
 		.ex.invalidate_rkey = rkey,
 	};
+
+	wr.wr_id = LOCAL_INV_WR_ID_MASK;
 
 	return ib_post_send(ch->qp, &wr, &bad_wr);
 }
