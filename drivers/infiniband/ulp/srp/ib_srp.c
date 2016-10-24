@@ -1622,9 +1622,9 @@ static int srp_map_finish_fmr(struct srp_map_state *state,
 	if (state->npages == 0)
 		return 0;
 
-	if (state->npages == 1 && target->global_mr) {
+	if (state->npages == 1 && target->global_rkey) {
 		srp_map_desc(state, state->base_dma_addr, state->dma_len,
-			     target->global_mr->rkey);
+			     target->global_rkey);
 		goto reset_state;
 	}
 
@@ -1677,9 +1677,9 @@ static int srp_map_finish_fr(struct srp_map_state *state,
 	if (state->npages == 0)
 		return 0;
 
-	if (state->npages == 1 && target->global_mr) {
+	if (state->npages == 1 && target->global_rkey) {
 		srp_map_desc(state, state->base_dma_addr, state->dma_len,
-			     target->global_mr->rkey);
+			     target->global_rkey);
 		goto reset_state;
 	}
 
@@ -1749,12 +1749,12 @@ static int srp_map_finish_fr(struct srp_map_state *state,
 
 	WARN_ON_ONCE(!dev->use_fast_reg);
 
-	if (sg_nents == 1 && target->global_mr) {
+	if (sg_nents == 1 && target->global_rkey) {
 		unsigned int sg_offset = sg_offset_p ? *sg_offset_p : 0;
 
 		srp_map_desc(state, sg_dma_address(state->sg) + sg_offset,
 			     sg_dma_len(state->sg) - sg_offset,
-			     target->global_mr->rkey);
+			     target->global_rkey);
 		if (sg_offset_p)
 			*sg_offset_p = 0;
 		return 1;
@@ -1959,7 +1959,7 @@ static int srp_map_sg_dma(struct srp_map_state *state, struct srp_rdma_ch *ch,
 	for_each_sg(scat, sg, count, i) {
 		srp_map_desc(state, ib_sg_dma_address(dev->dev, sg),
 			     ib_sg_dma_len(dev->dev, sg),
-			     target->global_mr->rkey);
+			     target->global_rkey);
 	}
 
 	return 0;
@@ -2135,7 +2135,7 @@ static int srp_map_data(struct scsi_cmnd *scmnd, struct srp_rdma_ch *ch,
 	fmt = SRP_DATA_DESC_DIRECT;
 	len = sizeof (struct srp_cmd) +	sizeof (struct srp_direct_buf);
 
-	if (count == 1 && target->global_mr) {
+	if (count == 1 && target->global_rkey) {
 		/*
 		 * The midlayer only generated a single gather/scatter
 		 * entry, or DMA mapping coalesced everything to a
@@ -2145,7 +2145,7 @@ static int srp_map_data(struct scsi_cmnd *scmnd, struct srp_rdma_ch *ch,
 		struct srp_direct_buf *buf = (void *) cmd->add_data;
 
 		buf->va  = cpu_to_be64(ib_sg_dma_address(ibdev, scat));
-		buf->key = cpu_to_be32(target->global_mr->rkey);
+		buf->key = cpu_to_be32(target->global_rkey);
 		buf->len = cpu_to_be32(ib_sg_dma_len(ibdev, scat));
 
 		req->nmdesc = 0;
@@ -2218,14 +2218,14 @@ static int srp_map_data(struct scsi_cmnd *scmnd, struct srp_rdma_ch *ch,
 	memcpy(indirect_hdr->desc_list, req->indirect_desc,
 	       count * sizeof (struct srp_direct_buf));
 
-	if (!target->global_mr) {
+	if (!target->global_rkey) {
 		ret = srp_map_idb(ch, req, state.gen.next, state.gen.end,
 				  idb_len, &idb_rkey);
 		if (ret < 0)
 			goto unmap;
 		req->nmdesc++;
 	} else {
-		idb_rkey = cpu_to_be32(target->global_mr->rkey);
+		idb_rkey = cpu_to_be32(target->global_rkey);
 	}
 
 	indirect_hdr->table_desc.va = cpu_to_be64(req->indirect_dma_addr);
@@ -4342,7 +4342,7 @@ static ssize_t srp_create_target(struct device *dev,
 #else
 	target->lkey		= host->srp_dev->pd->local_dma_lkey;
 #endif
-	target->global_mr	= host->srp_dev->global_mr;
+	target->global_rkey	= host->srp_dev->global_rkey;
 	target->cmd_sg_cnt	= cmd_sg_entries;
 	target->sg_tablesize	= indirect_sg_entries ? : cmd_sg_entries;
 	target->allow_ext_sg	= allow_ext_sg;
@@ -4701,6 +4701,7 @@ static void srp_add_one(struct ib_device *device)
 	struct srp_host *host;
 	int mr_page_shift, p;
 	u64 max_pages_per_mr;
+	unsigned int flags = 0;
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 	attr = kmalloc(sizeof(*attr), GFP_KERNEL);
@@ -4752,6 +4753,12 @@ static void srp_add_one(struct ib_device *device)
 		srp_dev->use_fmr = !srp_dev->use_fast_reg && srp_dev->has_fmr;
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
+	if (never_register || !register_always ||
+	    (!srp_dev->has_fmr && !srp_dev->has_fr))
+		flags |= IB_PD_UNSAFE_GLOBAL_RKEY;
+#endif
+
 	if (srp_dev->use_fast_reg) {
 		srp_dev->max_pages_per_mr =
 			min_t(u32, srp_dev->max_pages_per_mr,
@@ -4767,10 +4774,11 @@ static void srp_add_one(struct ib_device *device)
 	INIT_LIST_HEAD(&srp_dev->dev_list);
 
 	srp_dev->dev = device;
-	srp_dev->pd  = ib_alloc_pd(device);
+	srp_dev->pd  = ib_alloc_pd(device, flags);
 	if (IS_ERR(srp_dev->pd))
 		goto free_dev;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
 	if (never_register || !register_always ||
 	    (!srp_dev->has_fmr && !srp_dev->has_fr) ||
 	    !HAVE_PD_LOCAL_DMA_LKEY) {
@@ -4780,7 +4788,15 @@ static void srp_add_one(struct ib_device *device)
 						   IB_ACCESS_REMOTE_WRITE);
 		if (IS_ERR(srp_dev->global_mr))
 			goto err_pd;
+		srp_dev->global_rkey = srp_dev->global_mr->rkey;
+		WARN_ON_ONCE(srp_dev->global_rkey == 0);
 	}
+#else
+	if (flags & IB_PD_UNSAFE_GLOBAL_RKEY) {
+		srp_dev->global_rkey = srp_dev->pd->unsafe_global_rkey;
+		WARN_ON_ONCE(srp_dev->global_rkey == 0);
+	}
+#endif
 
 	for (p = rdma_start_port(device); p <= rdma_end_port(device); ++p) {
 		host = srp_add_port(srp_dev, p);
@@ -4792,8 +4808,10 @@ static void srp_add_one(struct ib_device *device)
 
 	goto free_attr;
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
 err_pd:
 	ib_dealloc_pd(srp_dev->pd);
+#endif
 
 free_dev:
 	kfree(srp_dev);
@@ -4851,8 +4869,10 @@ static void srp_remove_one(struct ib_device *device, void *client_data)
 		kfree(host);
 	}
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
 	if (srp_dev->global_mr)
 		ib_dereg_mr(srp_dev->global_mr);
+#endif
 	ib_dealloc_pd(srp_dev->pd);
 
 	kfree(srp_dev);
