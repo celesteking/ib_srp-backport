@@ -4414,6 +4414,7 @@ static ssize_t srp_create_target(struct device *dev,
 		mr_per_cmd = register_always +
 			(target->scsi_host->max_sectors + 1 +
 			 max_sectors_per_mr - 1) / max_sectors_per_mr;
+		mr_per_cmd = max(2U, mr_per_cmd);
 		pr_debug("max_sectors = %u; max_pages_per_mr = %u; mr_page_size = %u; max_sectors_per_mr = %u; mr_per_cmd = %u\n",
 			 target->scsi_host->max_sectors,
 			 srp_dev->max_pages_per_mr, srp_dev->mr_page_size,
