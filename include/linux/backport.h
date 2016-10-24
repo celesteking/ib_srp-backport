@@ -121,6 +121,17 @@ static inline int ib_sa_path_rec_get_compat(struct ib_sa_client *client,
 #endif
 
 /* <rdma/ib_verbs.h> */
+/* commit ed082d36 */
+#ifndef ib_alloc_pd
+static inline struct ib_pd *ib_alloc_pd_backport(struct ib_device *device)
+{
+	return ib_alloc_pd(device);
+}
+#define ib_alloc_pd(device, flags)				\
+	({							\
+		(void)(flags), ib_alloc_pd_backport(device);	\
+	})
+#endif
 /* commit 7083e42e */
 #if !defined(HAVE_IB_INC_RKEY)
 /**
