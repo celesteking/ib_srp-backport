@@ -1,5 +1,19 @@
 %define kmod_name ib_srp-backport
-%define kversion %{expand:%%(echo ${KVER:-$(uname -r)})}
+%{!?kversion:
+    %{?kdir:%define kversion %{expand:%%(
+        make -sC "%{kdir}" kernelversion | grep -v ^make)}}
+    %{!?kdir:
+        %define kversion %{expand:%%(
+            if rpm --quiet -q kernel-headers; then
+                rpm -q --qf '%%%%{BUILDTIME} %%%%{version}-%%%%{release}.%%%%{arch}\\n' \\
+                    kernel-headers | sort | tail -n1 | { read a b; echo $b; };
+            else
+                uname -r;
+            fi
+        )}}}
+%{echo:kdir=%{kdir}
+kversion=%{kversion}
+}
 %define kernel_rpm %{expand:%%(						\
           krpm="$(rpm -qf /boot/vmlinuz-%{kversion} 2>/dev/null |	\
                 grep -v 'is not owned by any package' | head -n 1)";	\
