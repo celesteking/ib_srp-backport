@@ -1714,7 +1714,6 @@ static int srp_map_finish_fr(struct srp_map_state *state,
 
 	err = ib_post_send(ch->qp, &wr, &bad_wr);
 	if (unlikely(err)) {
-		srp_fr_pool_put(ch->fr_pool, &desc, 1);
 		pr_debug("ib_post_send() returned %d.\n", err);
 		return err;
 	}
