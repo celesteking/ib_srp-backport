@@ -11,7 +11,7 @@
 	)}
 
 Name:		%{kmod_name}-%{kversion}
-Version:	2.0.39
+Version:	2.0.40
 Release:	1
 Summary:	%{kmod_name} kernel modules
 Group:		System/Kernel
@@ -69,6 +69,9 @@ depmod %{kversion}
 /lib/modules/%{kversion}/extra/%{kmod_name}/*.ko
 
 %changelog
+* Mon Oct 24 2016 Bart Van Assche <bart.vanassche@sandisk.com> - 2.0.40
+- Avoid that discontigous buffers trigger a mapping failure.
+- Fix a bug in a buffer mapping error path.
 * Thu Oct 20 2016 Bart Van Assche <bart.vanassche@sandisk.com> - 2.0.39
 - When building against MOFED, include the proper MOFED compat header file.
 - Made it again possible to build the source code with gcc 4.x.
