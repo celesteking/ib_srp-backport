@@ -25,7 +25,7 @@ kversion=%{kversion}
 	)}
 
 Name:		%{kmod_name}-%{kversion}
-Version:	2.0.40
+Version:	2.0.41
 Release:	1
 Summary:	%{kmod_name} kernel modules
 Group:		System/Kernel
@@ -83,6 +83,13 @@ depmod %{kversion}
 /lib/modules/%{kversion}/extra/%{kmod_name}/*.ko
 
 %changelog
+* Thu Dec 8 2016 Bart Van Assche <bart.vanassche@sandisk.com> - 2.0.41
+- Use the IB_DEVICE_SG_GAPS_REG HCA feature if supported.
+- Improve the test whether IB_DEVICE_SG_GAPS_REG is supported.
+- Make mapping failures easier to debug.
+- Port to SLES12 SP2.
+- Makefile, ib_srp-backport.spec: Add support for RPM cross-compilation.
+- Port to Linux kernel v4.9.
 * Mon Oct 24 2016 Bart Van Assche <bart.vanassche@sandisk.com> - 2.0.40
 - Avoid that discontigous buffers trigger a mapping failure.
 - Fix a bug in a buffer mapping error path.
