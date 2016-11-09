@@ -3503,7 +3503,8 @@ static int srp_slave_alloc(struct scsi_device *sdev)
 	struct Scsi_Host *shost = sdev->host;
 	struct srp_target_port *target = host_to_target(shost);
 	struct srp_device *srp_dev = target->srp_host->srp_dev;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 6, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 6, 0) && \
+	defined(HAVE_IB_DEVICE_SG_GAPS_REG)
 	struct ib_device *ibdev = srp_dev->dev;
 
 	if (!(ibdev->attrs.device_cap_flags & IB_DEVICE_SG_GAPS_REG))

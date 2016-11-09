@@ -71,6 +71,7 @@ ifneq ("$(GOALS)","$(OTHER_GOALS)")
 run_conftest = $(shell if [ "0$(V)" -gt 0 ]; then output=/dev/stdout; else output=/dev/null; fi; if $(MAKE) -C $(KDIR) V=$(V) SUBDIRS="$(shell pwd)/conftest/$1" PRE_CFLAGS="-Werror $(OFED_CFLAGS)" 1>&2 2>$${output}; then echo "$2"; else echo "$3"; fi)
 HAVE_IB_CQ_INIT_ATTR := $(call run_conftest,ib_cq_init_attr,-DHAVE_IB_CQ_INIT_ATTR)
 HAVE_IB_CREATE_CQ_ATTR_ARG := $(call run_conftest,create_cq,-DHAVE_IB_CREATE_CQ_ATTR_ARG)
+HAVE_IB_DEVICE_SG_GAPS_REG := $(call run_conftest,ib_device_sg_gaps_reg,-DHAVE_IB_DEVICE_SG_GAPS_REG)
 HAVE_IB_FMR_POOL_MAP_PHYS_ARG5 := $(call run_conftest,ib_fmr_pool_map_phys,-DHAVE_IB_FMR_POOL_MAP_PHYS_ARG5)
 HAVE_IB_INC_RKEY := $(call run_conftest,ib_inc_rkey,-DHAVE_IB_INC_RKEY)
 HAVE_IB_QUERY_GID_WITH_ATTR := $(call run_conftest,ib_query_gid,-DHAVE_IB_QUERY_GID_WITH_ATTR)
@@ -82,16 +83,21 @@ HAVE_STRUCT_IB_GID_ATTR := $(call run_conftest,ib_gid_attr,-DHAVE_STRUCT_IB_GID_
 HAVE_SYSTEM_LONG_WQ := $(call run_conftest,system_long_wq,-DHAVE_SYSTEM_LONG_WQ)
 HAVE_TRACK_QUEUE_DEPTH := $(call run_conftest,track_queue_depth,-DHAVE_TRACK_QUEUE_DEPTH)
 HAVE_USE_BLK_TAGS := $(call run_conftest,use_blk_tags,-DHAVE_USE_BLK_TAGS)
-PRE_CFLAGS := $(OFED_CFLAGS) $(HAVE_IB_CQ_INIT_ATTR)			\
-	$(HAVE_IB_CREATE_CQ_ATTR_ARG) $(HAVE_IB_INC_RKEY)		\
-	$(HAVE_IB_CREATE_CQ_ATTR_ARG) $(HAVE_IB_FMR_POOL_MAP_PHYS_ARG5)	\
-	$(HAVE_IB_INC_RKEY) $(HAVE_IB_QUERY_GID_WITH_ATTR)		\
-	$(HAVE_IB_SA_PATH_REC_GET_MASK_ARG)				\
-	$(HAVE_PD_LOCAL_DMA_LKEY) $(HAVE_SCSI_MQ)			\
-	$(HAVE_SCSI_QDEPTH_REASON)					\
-	$(HAVE_STRUCT_IB_GID_ATTR)					\
-	$(HAVE_SYSTEM_LONG_WQ)						\
-	$(HAVE_TRACK_QUEUE_DEPTH) $(HAVE_USE_BLK_TAGS)			\
+PRE_CFLAGS := $(OFED_CFLAGS)			\
+	$(HAVE_IB_CQ_INIT_ATTR)			\
+	$(HAVE_IB_CREATE_CQ_ATTR_ARG)		\
+	$(HAVE_IB_DEVICE_SG_GAPS_REG)		\
+	$(HAVE_IB_FMR_POOL_MAP_PHYS_ARG5)	\
+	$(HAVE_IB_INC_RKEY)			\
+	$(HAVE_IB_QUERY_GID_WITH_ATTR)		\
+	$(HAVE_IB_SA_PATH_REC_GET_MASK_ARG)	\
+	$(HAVE_PD_LOCAL_DMA_LKEY)		\
+	$(HAVE_SCSI_MQ)				\
+	$(HAVE_SCSI_QDEPTH_REASON)		\
+	$(HAVE_STRUCT_IB_GID_ATTR)		\
+	$(HAVE_SYSTEM_LONG_WQ)			\
+	$(HAVE_TRACK_QUEUE_DEPTH)		\
+	$(HAVE_USE_BLK_TAGS)			\
 	-DOFED_FLAVOR=$(OFED_FLAVOR)
 endif
 
