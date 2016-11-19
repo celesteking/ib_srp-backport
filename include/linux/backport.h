@@ -282,7 +282,9 @@ struct rdma_cm_id *rdma_create_id_compat(rdma_cm_event_handler event_handler,
 #endif
 
 /* See also commit 1d64508810d8 */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 7, 0)
+#if (!defined(CONFIG_SUSE_KERNEL) &&				\
+	LINUX_VERSION_CODE < KERNEL_VERSION(4, 7, 0)) ||	\
+	LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
 enum scsi_scan_mode {
 	SCSI_SCAN_INITIAL = 0,
 	SCSI_SCAN_RESCAN,
