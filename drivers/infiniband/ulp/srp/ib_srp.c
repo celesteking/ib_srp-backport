@@ -4561,10 +4561,18 @@ static ssize_t srp_create_target(struct device *dev,
 
 			ret = srp_connect_ch(ch, multich);
 			if (ret) {
+				char dst[64];
+
+				if (target->using_rdma_cm)
+					inet_ntop(&target->rdma_cm.dst, dst,
+						  sizeof(dst));
+				else
+					snprintf(dst, sizeof(dst), "%pI6",
+						 target->ib_cm.orig_dgid.raw);
 				shost_printk(KERN_ERR, target->scsi_host,
-					     PFX "Connection %d/%d failed\n",
+					     PFX "Connection %d/%d to %s failed\n",
 					     ch_start + cpu_idx,
-					     target->ch_count);
+					     target->ch_count, dst);
 				if (node_idx == 0 && cpu_idx == 0) {
 					goto err_disconnect;
 				} else {
