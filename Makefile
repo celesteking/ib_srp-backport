@@ -72,6 +72,7 @@ run_conftest = $(shell if [ "0$(V)" -gt 0 ]; then output=/dev/stdout; else outpu
 HAVE_IB_CQ_INIT_ATTR := $(call run_conftest,ib_cq_init_attr,-DHAVE_IB_CQ_INIT_ATTR)
 HAVE_IB_CREATE_CQ_ATTR_ARG := $(call run_conftest,create_cq,-DHAVE_IB_CREATE_CQ_ATTR_ARG)
 HAVE_IB_DEVICE_SG_GAPS_REG := $(call run_conftest,ib_device_sg_gaps_reg,-DHAVE_IB_DEVICE_SG_GAPS_REG)
+HAVE_IB_DMA_MAP_OPS := $(call run_conftest,ib_dma_map_ops,-DHAVE_IB_DMA_MAP_OPS)
 HAVE_IB_FMR_POOL_MAP_PHYS_ARG5 := $(call run_conftest,ib_fmr_pool_map_phys,-DHAVE_IB_FMR_POOL_MAP_PHYS_ARG5)
 HAVE_IB_INC_RKEY := $(call run_conftest,ib_inc_rkey,-DHAVE_IB_INC_RKEY)
 HAVE_IB_QUERY_GID_WITH_ATTR := $(call run_conftest,ib_query_gid,-DHAVE_IB_QUERY_GID_WITH_ATTR)
@@ -87,6 +88,7 @@ PRE_CFLAGS := $(OFED_CFLAGS)			\
 	$(HAVE_IB_CQ_INIT_ATTR)			\
 	$(HAVE_IB_CREATE_CQ_ATTR_ARG)		\
 	$(HAVE_IB_DEVICE_SG_GAPS_REG)		\
+	$(HAVE_IB_DMA_MAP_OPS)			\
 	$(HAVE_IB_FMR_POOL_MAP_PHYS_ARG5)	\
 	$(HAVE_IB_INC_RKEY)			\
 	$(HAVE_IB_QUERY_GID_WITH_ATTR)		\
