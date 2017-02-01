@@ -1513,13 +1513,13 @@ static void srp_finish_req(struct srp_rdma_ch *ch, struct srp_request *req,
 	if (scmnd) {
 		srp_free_req(ch, req, scmnd, 0);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 19)
-		scmnd->request->cmd_flags |= REQ_QUIET;
+		scmnd->request->cmd_flags |= RQF_QUIET;
 #else
 		/*
 		 * See also commit "Split struct request ->flags into two
 		 * parts" (4aff5e2333c9a1609662f2091f55c3f6fffdad36).
 		 */
-		scmnd->request->flags |= REQ_QUIET;
+		scmnd->request->flags |= RQF_QUIET;
 #endif
 		scmnd->result = result;
 		scmnd->scsi_done(scmnd);
@@ -2769,17 +2769,17 @@ static int SRP_QUEUECOMMAND(struct Scsi_Host *shost, struct scsi_cmnd *scmnd)
 
 	/*
 	 * The "blocked" state of SCSI devices is ignored by the SCSI core for
-	 * REQ_PREEMPT requests in Linux kernels before version v4.0. Hence
+	 * RQF_PREEMPT requests in Linux kernels before version v4.0. Hence
 	 * the explicit check below for the SCSI device state. See also patch
-	 * "Defer processing of REQ_PREEMPT requests for blocked devices"
+	 * "Defer processing of RQF_PREEMPT requests for blocked devices"
 	 * (commit ID bba0bdd7ad47).
 	 */
 	scmnd->result = srp_chkready(target->rport);
 	if (unlikely(scmnd->result != 0 || scsi_device_blocked(scmnd->device))) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 19)
-		scmnd->request->cmd_flags |= REQ_QUIET;
+		scmnd->request->cmd_flags |= RQF_QUIET;
 #else
-		scmnd->request->flags |= REQ_QUIET;
+		scmnd->request->flags |= RQF_QUIET;
 #endif
 		goto err;
 	}
@@ -3487,9 +3487,9 @@ static int srp_abort(struct scsi_cmnd *scmnd)
 		ret = FAILED;
 	srp_free_req(ch, req, scmnd, 0);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 19)
-	scmnd->request->cmd_flags |= REQ_QUIET;
+	scmnd->request->cmd_flags |= RQF_QUIET;
 #else
-	scmnd->request->flags |= REQ_QUIET;
+	scmnd->request->flags |= RQF_QUIET;
 #endif
 	scmnd->result = DID_ABORT << 16;
 	scmnd->scsi_done(scmnd);

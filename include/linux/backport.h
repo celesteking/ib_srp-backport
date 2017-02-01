@@ -33,6 +33,10 @@
 #endif
 #endif
 
+#ifndef RQF_QUIET
+#define RQF_QUIET REQ_QUIET
+#endif
+
 /* <linux/kernel.h> */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 29)
 #ifndef swap
