@@ -135,9 +135,11 @@ static inline u32 ib_inc_rkey(u32 rkey)
 }
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 2, 0) &&	\
-	(!defined(RHEL_MAJOR) || RHEL_MAJOR -0 < 7 ||	\
-	 RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 2)
+#if !defined(MOFED_MAJOR) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 2, 0) && \
+	(!defined(RHEL_MAJOR) || RHEL_MAJOR -0 < 7 ||			\
+	 RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 2) ||			\
+	defined(MOFED_MAJOR) &&						\
+	(MOFED_MAJOR -0 < 3 || MOFED_MAJOR -0 == 3 && MOFED_MINOR -0 < 4)
 /* See also commit 4139032b */
 static inline u8 rdma_start_port(const struct ib_device *device)
 {
