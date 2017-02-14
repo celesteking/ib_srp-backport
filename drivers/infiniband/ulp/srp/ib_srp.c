@@ -4553,7 +4553,7 @@ static ssize_t srp_create_target(struct device *dev,
 					     ch_start + cpu_idx,
 					     target->ch_count, dst);
 				if (node_idx == 0 && cpu_idx == 0) {
-					goto err_disconnect;
+					goto free_ch;
 				} else {
 					srp_free_ch_ib(target, ch);
 					srp_free_req_data(target, ch);
@@ -4620,6 +4620,7 @@ out:
 err_disconnect:
 	srp_disconnect_target(target);
 
+free_ch:
 	for (i = 0; i < target->ch_count; i++) {
 		ch = &target->ch[i];
 		srp_free_ch_ib(target, ch);
