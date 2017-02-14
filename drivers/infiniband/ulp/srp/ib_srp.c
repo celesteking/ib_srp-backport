@@ -42,6 +42,7 @@
 #include <linux/parser.h>
 #include <linux/random.h>
 #include <linux/jiffies.h>
+#include <linux/lockdep.h>
 #include <linux/inet.h>
 #include <rdma/ib_cache.h>
 
@@ -2311,6 +2312,8 @@ static struct srp_iu *__srp_get_tx_iu(struct srp_rdma_ch *ch,
 	s32 rsv = (iu_type == SRP_IU_TSK_MGMT) ? 0 : SRP_TSK_MGMT_SQ_SIZE;
 	struct srp_iu *iu;
 
+	lockdep_assert_held(&ch->lock);
+
 	srp_send_completion(ch->send_cq, ch);
 
 	if (list_empty(&ch->free_tx))
@@ -2660,6 +2663,8 @@ static void srp_send_completion(struct ib_cq *cq, void *ch_ptr)
 	while ((n = ib_poll_cq(cq, ARRAY_SIZE(ch->send_wc), wc)) > 0) {
 		for (i = 0; i < n; ++i) {
 			if (likely(wc[i].status == IB_WC_SUCCESS)) {
+				lockdep_assert_held(&ch->lock);
+
 				iu = (struct srp_iu *) (uintptr_t) wc[i].wr_id;
 				list_add(&iu->list, &ch->free_tx);
 			} else {
