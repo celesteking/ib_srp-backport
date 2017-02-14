@@ -631,6 +631,74 @@ static struct srp_fr_pool *srp_alloc_fr_pool(struct srp_target_port *target)
 				  dev->max_pages_per_mr);
 }
 
+static void __srp_drain_sq(struct ib_qp *qp)
+{
+	struct ib_cq *cq = qp->send_cq;
+	struct srp_rdma_ch *ch = cq->cq_context;
+	static struct ib_qp_attr attr = { .qp_state = IB_QPS_ERR };
+	struct ib_send_wr swr = { }, *bad_swr;
+	int i, ret = -ETIMEDOUT;
+
+	/* Destroying a QP and reusing ch->done is only safe if not connected */
+	WARN_ON_ONCE(ch->connected);
+
+	pr_debug("ch = %p; &ch->done = %p\n", ch, &ch->done);
+
+	swr.wr_id = SRP_LAST_WR_ID;
+	swr.opcode = IB_WR_RDMA_WRITE;
+
+	ret = ib_modify_qp(qp, &attr, IB_QP_STATE);
+	if (WARN_ONCE(ret, "ib_modify_qp() returned %d\n", ret))
+		return;
+
+	init_completion(&ch->done);
+	ret = ib_post_send(qp, &swr, &bad_swr);
+	if (WARN_ONCE(ret, "ib_post_send() returned %d\n", ret))
+		return;
+
+	for (i = 0; i < 50 && (ret = wait_for_completion_timeout(&ch->done,
+		HZ / 10)) == 0; i++) {
+		srp_send_completion(qp->send_cq, ch);
+	}
+
+	WARN_ONCE(ret <= 0, "ret = %d\n", ret);
+}
+
+static void __srp_drain_rq(struct ib_qp *qp)
+{
+	struct ib_cq *cq = qp->recv_cq;
+	struct srp_rdma_ch *ch = cq->cq_context;
+	static struct ib_qp_attr attr = { .qp_state = IB_QPS_ERR };
+	struct ib_recv_wr rwr = { }, *bad_wr;
+	int ret;
+
+	/* Destroying a QP and reusing ch->done is only safe if not connected */
+	WARN_ON_ONCE(ch->connected);
+
+	pr_debug("ch = %p; &ch->done = %p\n", ch, &ch->done);
+
+	rwr.wr_id = SRP_LAST_WR_ID;
+
+	ret = ib_modify_qp(qp, &attr, IB_QP_STATE);
+	if (WARN_ONCE(ret, "ib_modify_qp() returned %d\n", ret))
+		return;
+
+	init_completion(&ch->done);
+	ret = ib_post_recv(qp, &rwr, &bad_wr);
+	if (WARN_ONCE(ret, "ib_post_recv() returned %d\n", ret))
+		return;
+
+	ret = wait_for_completion_timeout(&ch->done, 5 * HZ);
+	WARN_ONCE(ret <= 0, "ret = %d\n", ret);
+}
+
+static void srp_drain_qp(struct ib_qp *qp)
+{
+	__srp_drain_sq(qp);
+	if (!qp->srq)
+		__srp_drain_rq(qp);
+}
+
 /**
  * srp_destroy_qp() - destroy an RDMA queue pair
  * @ch: SRP RDMA channel.
@@ -641,31 +709,18 @@ static struct srp_fr_pool *srp_alloc_fr_pool(struct srp_target_port *target)
  */
 static void srp_destroy_qp(struct srp_rdma_ch *ch)
 {
+	spin_lock_irq(&ch->lock);
 #if 1
-	static struct ib_qp_attr attr = { .qp_state = IB_QPS_ERR };
-	static struct ib_recv_wr wr;
-	struct ib_recv_wr *bad_wr;
-	int ret;
-
-	/* Destroying a QP and reusing ch->done is only safe if not connected */
-	WARN_ON_ONCE(ch->connected);
-
-	wr.wr_id = SRP_LAST_WR_ID;
-
-	ret = ib_modify_qp(ch->qp, &attr, IB_QP_STATE);
-	WARN_ONCE(ret, "ib_cm_init_qp_attr() returned %d\n", ret);
-	if (ret)
-		goto out;
-
-	init_completion(&ch->done);
-	ret = ib_post_recv(ch->qp, &wr, &bad_wr);
-	WARN_ONCE(ret, "ib_post_recv() returned %d\n", ret);
-	if (ret == 0)
-		wait_for_completion(&ch->done);
-
-out:
+	srp_send_completion(ch->send_cq, ch);
 #else
-	ib_drain_rq(ch->qp);
+	ib_process_cq_direct(ch->send_cq, -1);
+#endif
+	spin_unlock_irq(&ch->lock);
+
+#if 1
+	srp_drain_qp(ch->qp);
+#else
+	ib_drain_qp(ch->qp);
 #endif
 	ib_destroy_qp(ch->qp);
 }
