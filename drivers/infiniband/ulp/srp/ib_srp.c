@@ -3551,11 +3551,13 @@ static int srp_reset_host(struct scsi_cmnd *scmnd)
 
 static int srp_slave_alloc(struct scsi_device *sdev)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 3, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 3, 0) || \
+	(!defined(RHEL_MAJOR) || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 >= 3)
 	struct Scsi_Host *shost = sdev->host;
 	struct srp_target_port *target = host_to_target(shost);
 	struct srp_device *srp_dev = target->srp_host->srp_dev;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 6, 0) && \
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 6, 0) || \
+	(!defined(RHEL_MAJOR) || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 >= 3)) && \
 	defined(HAVE_IB_DEVICE_SG_GAPS_REG)
 	struct ib_device *ibdev = srp_dev->dev;
 
