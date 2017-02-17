@@ -197,7 +197,8 @@ MODULE_PARM_DESC(ch_count,
 		 "Number of RDMA channels to use for communication with an SRP target. Using more than one channel improves performance if the HCA supports multiple completion vectors. The default value is the minimum of four times the number of online CPU sockets and the number of completion vectors supported by the HCA.");
 
 static void srp_add_one(struct ib_device *device);
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 3, 0)
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 3, 0)) && \
+	(!defined(RHEL_MAJOR) || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3)
 static void srp_remove_one(struct ib_device *device);
 #else
 static void srp_remove_one(struct ib_device *device, void *client_data);
@@ -429,7 +430,8 @@ static int srp_new_rdma_cm_id(struct srp_rdma_ch *ch)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 0, 0) && \
         (!defined(RHEL_MAJOR) || RHEL_MAJOR -0 < 6)
 	new_cm_id = rdma_create_id(srp_rdma_cm_handler, ch, RDMA_PS_TCP);
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) && \
+	(!defined(RHEL_MAJOR) || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3)
 	new_cm_id = rdma_create_id(srp_rdma_cm_handler, ch, RDMA_PS_TCP,
 				   IB_QPT_RC);
 #else
@@ -500,7 +502,8 @@ static void srp_destroy_fr_pool(struct srp_fr_pool *pool)
 		return;
 
 	for (i = 0, d = &pool->desc[0]; i < pool->size; i++, d++) {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) && \
+	(!defined(RHEL_MAJOR) || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3)
 		if (d->frpl)
 			ib_free_fast_reg_page_list(d->frpl);
 #endif
@@ -516,7 +519,8 @@ static bool srp_gaps_supported(struct ib_device *device)
 #ifdef HAVE_IB_DEVICE_SG_GAPS_REG
 	struct ib_device_attr *attr;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0) && \
+	(!defined(RHEL_MAJOR) || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3)
 	attr = kmalloc(sizeof(*attr), GFP_KERNEL);
 	if (!attr)
 		goto out;
@@ -531,7 +535,8 @@ static bool srp_gaps_supported(struct ib_device *device)
 
 	gaps_supported = attr->device_cap_flags & IB_DEVICE_SG_GAPS_REG;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0) && \
+	(!defined(RHEL_MAJOR) || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3)
 free_attr:
 	kfree(attr);
 
@@ -555,7 +560,8 @@ static struct srp_fr_pool *srp_create_fr_pool(struct ib_device *device,
 	struct srp_fr_pool *pool;
 	struct srp_fr_desc *d;
 	struct ib_mr *mr;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) && \
+	(!defined(RHEL_MAJOR) || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3)
 	struct ib_fast_reg_page_list *frpl;
 #endif
 	enum ib_mr_type mr_type = IB_MR_TYPE_MEM_REG;
@@ -588,7 +594,8 @@ static struct srp_fr_pool *srp_create_fr_pool(struct ib_device *device,
 			goto destroy_pool;
 		}
 		d->mr = mr;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) && \
+	(!defined(RHEL_MAJOR) || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3)
 		frpl = ib_alloc_fast_reg_page_list(device, max_page_list_len);
 		if (IS_ERR(frpl)) {
 			ret = PTR_ERR(frpl);
@@ -1697,7 +1704,8 @@ reset_state:
 	return 0;
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) && \
+	(!defined(RHEL_MAJOR) || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3)
 static int srp_map_finish_fr(struct srp_map_state *state,
 			     struct srp_rdma_ch *ch)
 {
@@ -1815,7 +1823,8 @@ static int srp_map_finish_fr(struct srp_map_state *state,
 	rkey = ib_inc_rkey(desc->mr->rkey);
 	ib_update_fast_reg_key(desc->mr, rkey);
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 7, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 7, 0) && \
+	(!defined(RHEL_MAJOR) || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3)
 	n = ib_map_mr_sg(desc->mr, state->sg, sg_nents, dev->mr_page_size);
 #else
 	n = ib_map_mr_sg(desc->mr, state->sg, sg_nents, sg_offset_p,
@@ -1858,7 +1867,8 @@ static int srp_map_finish_fr(struct srp_map_state *state,
 }
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) */
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) && \
+	(!defined(RHEL_MAJOR) || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3)
 static int srp_finish_mapping(struct srp_map_state *state,
 			      struct srp_rdma_ch *ch)
 {
@@ -1889,7 +1899,8 @@ static int srp_map_sg_entry(struct srp_map_state *state,
 
 		if (state->npages == dev->max_pages_per_mr ||
 		    (state->npages > 0 && offset != 0)) {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) && \
+	(!defined(RHEL_MAJOR) || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3)
 			ret = srp_finish_mapping(state, ch);
 #else
 			ret = srp_map_finish_fmr(state, ch);
@@ -1915,7 +1926,8 @@ static int srp_map_sg_entry(struct srp_map_state *state,
 	 */
 	ret = 0;
 	if ((dma_addr & ~dev->mr_page_mask) != 0)
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) && \
+	(!defined(RHEL_MAJOR) || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3)
 		ret = srp_finish_mapping(state, ch);
 #else
 		ret = srp_map_finish_fmr(state, ch);
@@ -1951,7 +1963,8 @@ static int srp_map_sg_fr(struct srp_map_state *state, struct srp_rdma_ch *ch,
 			 struct srp_request *req, struct scatterlist *scat,
 			 int count)
 {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) && \
+	(!defined(RHEL_MAJOR) || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3)
 	struct scatterlist *sg;
 	int i, ret;
 
@@ -2029,7 +2042,8 @@ static int srp_map_idb(struct srp_rdma_ch *ch, struct srp_request *req,
 	struct srp_map_state state;
 	struct srp_direct_buf idb_desc;
 	u64 idb_pages[1];
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0) || \
+	(!defined(RHEL_MAJOR) || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 >= 3)
 	struct scatterlist idb_sg[1];
 #endif
 	int ret;
@@ -2039,7 +2053,8 @@ static int srp_map_idb(struct srp_rdma_ch *ch, struct srp_request *req,
 	state.gen.next = next_mr;
 	state.gen.end = end_mr;
 	state.desc = &idb_desc;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) && \
+	(!defined(RHEL_MAJOR) || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3)
 	state.pages = idb_pages;
 	state.pages[0] = (req->indirect_dma_addr &
 			  dev->mr_page_mask);
@@ -2048,7 +2063,8 @@ static int srp_map_idb(struct srp_rdma_ch *ch, struct srp_request *req,
 	state.base_dma_addr = req->indirect_dma_addr;
 	state.dma_len = idb_len;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) && \
+	(!defined(RHEL_MAJOR) || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3)
 	ret = srp_finish_mapping(&state, ch);
 	if (ret < 0)
 		return ret;
@@ -4386,7 +4402,8 @@ static ssize_t srp_create_target(struct device *dev,
 	target->io_class	= SRP_REV16A_IB_IO_CLASS;
 	target->scsi_host	= target_host;
 	target->srp_host	= host;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 3, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 3, 0) && \
+	(!defined(RHEL_MAJOR) || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3)
 	target->lkey		= host->srp_dev->global_mr->lkey;
 #else
 	target->lkey		= host->srp_dev->pd->local_dma_lkey;
@@ -4767,7 +4784,8 @@ static void srp_add_one(struct ib_device *device)
 	u64 max_pages_per_mr;
 	unsigned int flags = 0;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0) && \
+	(!defined(RHEL_MAJOR) || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3)
 	attr = kmalloc(sizeof(*attr), GFP_KERNEL);
 	if (!attr)
 		return;
@@ -4881,14 +4899,16 @@ free_dev:
 	kfree(srp_dev);
 
 free_attr:
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0) && \
+	(!defined(RHEL_MAJOR) || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3)
 	kfree(attr);
 #else
 	;
 #endif
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 3, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 3, 0) && \
+	(!defined(RHEL_MAJOR) || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3)
 static void srp_remove_one(struct ib_device *device)
 {
 	void *client_data = ib_get_client_data(device, &srp_client);
