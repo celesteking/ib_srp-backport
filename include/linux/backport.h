@@ -302,7 +302,10 @@ static inline u8 rdma_end_port(const struct ib_device *device)
 }
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 2, 0)
+#if	(!defined(RHEL_MAJOR) &&					\
+	 LINUX_VERSION_CODE < KERNEL_VERSION(4, 2, 0)) ||		\
+	(defined(RHEL_MAJOR) &&						\
+	 (RHEL_MAJOR -0 < 7 || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3))
 /* See also commit 569e247f7aa6 */
 enum ib_mr_type {
 	IB_MR_TYPE_MEM_REG,
@@ -420,9 +423,12 @@ struct rdma_cm_id *rdma_create_id_compat(rdma_cm_event_handler event_handler,
 #endif
 
 /* See also commit 1d64508810d8 */
-#if (!defined(CONFIG_SUSE_KERNEL) &&				\
-	LINUX_VERSION_CODE < KERNEL_VERSION(4, 7, 0)) ||	\
-	LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
+#if	(!defined(RHEL_MAJOR) && !defined(CONFIG_SUSE_KERNEL) &&	\
+	 LINUX_VERSION_CODE < KERNEL_VERSION(4, 7, 0)) ||		\
+	(defined(CONFIG_SUSE_KERNEL) &&					\
+	 LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)) ||		\
+	(defined(RHEL_MAJOR) &&						\
+	 (RHEL_MAJOR -0 < 7 || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3))
 enum scsi_scan_mode {
 	SCSI_SCAN_INITIAL = 0,
 	SCSI_SCAN_RESCAN,
