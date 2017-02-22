@@ -78,6 +78,7 @@ HAVE_IB_INC_RKEY := $(call run_conftest,ib_inc_rkey,-DHAVE_IB_INC_RKEY)
 HAVE_IB_QUERY_GID_WITH_ATTR := $(call run_conftest,ib_query_gid,-DHAVE_IB_QUERY_GID_WITH_ATTR)
 HAVE_IB_SA_PATH_REC_GET_MASK_ARG := $(call run_conftest,ib_sa_path_rec_get,-DHAVE_IB_SA_PATH_REC_GET_MASK_ARG)
 HAVE_PD_LOCAL_DMA_LKEY := $(call run_conftest,pd_local_dma_lkey,-DHAVE_PD_LOCAL_DMA_LKEY=1,-DHAVE_PD_LOCAL_DMA_LKEY=0)
+RDMA_CREATE_ID              := $(call run_conftest,rdma_create_id_net,-DRDMA_CREATE_ID_TAKES_NET_ARG=1,-DRDMA_CREATE_ID_TAKES_NET_ARG=0)
 HAVE_SCSI_MQ := $(call run_conftest,scsi_mq,-DHAVE_SCSI_MQ)
 HAVE_SCSI_QDEPTH_REASON := $(call run_conftest,scsi_qdepth_reason,-DHAVE_SCSI_QDEPTH_REASON)
 HAVE_STRUCT_IB_GID_ATTR := $(call run_conftest,ib_gid_attr,-DHAVE_STRUCT_IB_GID_ATTR)
@@ -94,6 +95,7 @@ PRE_CFLAGS := $(OFED_CFLAGS)			\
 	$(HAVE_IB_QUERY_GID_WITH_ATTR)		\
 	$(HAVE_IB_SA_PATH_REC_GET_MASK_ARG)	\
 	$(HAVE_PD_LOCAL_DMA_LKEY)		\
+	$(RDMA_CREATE_ID)			\
 	$(HAVE_SCSI_MQ)				\
 	$(HAVE_SCSI_QDEPTH_REASON)		\
 	$(HAVE_STRUCT_IB_GID_ATTR)		\

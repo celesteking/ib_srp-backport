@@ -429,7 +429,7 @@ static int srp_new_rdma_cm_id(struct srp_rdma_ch *ch)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 0, 0) && \
         (!defined(RHEL_MAJOR) || RHEL_MAJOR -0 < 6)
 	new_cm_id = rdma_create_id(srp_rdma_cm_handler, ch, RDMA_PS_TCP);
-#elif LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
+#elif !RDMA_CREATE_ID_TAKES_NET_ARG
 	new_cm_id = rdma_create_id(srp_rdma_cm_handler, ch, RDMA_PS_TCP,
 				   IB_QPT_RC);
 #else
