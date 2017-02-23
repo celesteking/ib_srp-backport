@@ -156,6 +156,7 @@ check:
 	fi
 
 dist-gzip:
+	rm -rf ib_srp-backport-$(VERSION) &&			\
 	mkdir ib_srp-backport-$(VERSION) &&			\
 	{							\
 	  {							\
