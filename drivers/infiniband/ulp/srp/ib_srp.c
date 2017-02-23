@@ -76,6 +76,11 @@ MODULE_VERSION(DRV_VERSION);
 MODULE_INFO(release_date, DRV_RELDATE);
 MODULE_INFO(build_flags, __stringify(BUILD_CFLAGS));
 
+#if !defined(CONFIG_DYNAMIC_DEBUG)
+#define DEFINE_DYNAMIC_DEBUG_METADATA(name, fmt)
+#define DYNAMIC_DEBUG_BRANCH(descriptor) false
+#endif
+
 static unsigned int srp_sg_tablesize;
 static unsigned int cmd_sg_entries;
 static unsigned int indirect_sg_entries;
@@ -2091,11 +2096,11 @@ static int srp_map_idb(struct srp_rdma_ch *ch, struct srp_request *req,
 	return 0;
 }
 
-#if defined(DYNAMIC_DATA_DEBUG)
 static void srp_check_mapping(struct srp_map_state *state,
 			      struct srp_rdma_ch *ch, struct srp_request *req,
 			      struct scatterlist *scat, int count)
 {
+#if HAVE_IB_MR_LENGTH
 	struct srp_device *dev = ch->target->srp_host->srp_dev;
 	struct srp_fr_desc **pfr;
 	u64 desc_len = 0, mr_len = 0;
@@ -2114,8 +2119,8 @@ static void srp_check_mapping(struct srp_map_state *state,
 		pr_err("Inconsistent: scsi len %d <> desc len %lld <> mr len %lld; ndesc %d; nmdesc = %d\n",
 		       scsi_bufflen(req->scmnd), desc_len, mr_len,
 		       state->ndesc, state->nmdesc);
-}
 #endif
+}
 
 /**
  * srp_map_data() - map SCSI data buffer onto an SRP request
@@ -2230,14 +2235,12 @@ static int srp_map_data(struct scsi_cmnd *scmnd, struct srp_rdma_ch *ch,
 	if (ret < 0)
 		goto unmap;
 
-#if defined(DYNAMIC_DEBUG)
 	{
 		DEFINE_DYNAMIC_DEBUG_METADATA(ddm,
 			"Memory mapping consistency check");
-		if (unlikely(ddm.flags & _DPRINTK_FLAGS_PRINT))
+		if (DYNAMIC_DEBUG_BRANCH(ddm))
 			srp_check_mapping(&state, ch, req, scat, count);
 	}
-#endif
 
 	/* We've mapped the request, now pull as much of the indirect
 	 * descriptor table as we can into the command buffer. If this

@@ -220,6 +220,12 @@ conftest/ib_inc_rkey/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	conftest/ib_inc_rkey/Makefile
 	echo $(call run_conftest,ib_inc_rkey,-DHAVE_IB_INC_RKEY) >$@
 
+conftest/ib_mr_length/result-$(KVER).txt: $(KERNEL_IMAGE)	\
+	conftest/ib_mr_length/ib_mr_length.c			\
+	conftest/ib_mr_length/Makefile
+	echo $(call run_conftest,ib_mr_length,			\
+		-DHAVE_IB_MR_LENGTH=1,-DHAVE_IB_MR_LENGTH=0) >$@
+
 conftest/ib_mr_type_mem_reg/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	conftest/ib_mr_type_mem_reg/ib_mr_type_mem_reg.c	\
 	conftest/ib_mr_type_mem_reg/Makefile

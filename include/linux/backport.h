@@ -37,6 +37,27 @@
 #define RQF_QUIET REQ_QUIET
 #endif
 
+/* <linux/dynamic_debug.h> */
+#if defined(CONFIG_DYNAMIC_DEBUG) && !defined(DYNAMIC_DEBUG_BRANCH)
+#if 0 && defined(HAVE_JUMP_LABEL)
+#ifdef DEBUG
+#define DYNAMIC_DEBUG_BRANCH(descriptor) \
+        static_branch_likely(&descriptor.key.dd_key_true)
+#else
+#define DYNAMIC_DEBUG_BRANCH(descriptor) \
+        static_branch_unlikely(&descriptor.key.dd_key_false)
+#endif
+#else /* HAVE_JUMP_LABEL */
+#ifdef DEBUG
+#define DYNAMIC_DEBUG_BRANCH(descriptor) \
+        likely(descriptor.flags & _DPRINTK_FLAGS_PRINT)
+#else
+#define DYNAMIC_DEBUG_BRANCH(descriptor) \
+        unlikely(descriptor.flags & _DPRINTK_FLAGS_PRINT)
+#endif
+#endif /* HAVE_JUMP_LABEL */
+#endif /* defined(CONFIG_DYNAMIC_DEBUG) && !defined(DYNAMIC_DEBUG_BRANCH) */
+
 /* <linux/kernel.h> */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 29)
 #ifndef swap
