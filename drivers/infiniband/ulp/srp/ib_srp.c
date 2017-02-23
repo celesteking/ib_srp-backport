@@ -3885,6 +3885,7 @@ static struct scsi_host_template srp_template = {
 #ifndef HAVE_TRACK_QUEUE_DEPTH
 	.change_queue_type              = srp_change_queue_type,
 #endif
+	.eh_timed_out			= srp_timed_out,
 	.eh_abort_handler		= srp_abort,
 	.eh_device_reset_handler	= srp_reset_device,
 	.eh_host_reset_handler		= srp_reset_host,
