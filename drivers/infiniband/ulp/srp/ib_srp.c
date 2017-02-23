@@ -503,9 +503,7 @@ static void srp_destroy_fr_pool(struct srp_fr_pool *pool)
 		return;
 
 	for (i = 0, d = &pool->desc[0]; i < pool->size; i++, d++) {
-#if !defined(RHEL_MAJOR) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) || \
-	(defined(RHEL_MAJOR) &&						\
-	 (RHEL_MAJOR -0 < 7 || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3))
+#if !defined(HAVE_IB_WR_REG_MR)
 		if (d->frpl)
 			ib_free_fast_reg_page_list(d->frpl);
 #endif
@@ -564,9 +562,7 @@ static struct srp_fr_pool *srp_create_fr_pool(struct ib_device *device,
 	struct srp_fr_pool *pool;
 	struct srp_fr_desc *d;
 	struct ib_mr *mr;
-#if !defined(RHEL_MAJOR) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) || \
-	(defined(RHEL_MAJOR) &&						\
-	 (RHEL_MAJOR -0 < 7 || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3))
+#if !defined(HAVE_IB_WR_REG_MR)
 	struct ib_fast_reg_page_list *frpl;
 #endif
 	enum ib_mr_type mr_type = IB_MR_TYPE_MEM_REG;
@@ -599,9 +595,7 @@ static struct srp_fr_pool *srp_create_fr_pool(struct ib_device *device,
 			goto destroy_pool;
 		}
 		d->mr = mr;
-#if !defined(RHEL_MAJOR) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) || \
-	(defined(RHEL_MAJOR) &&						\
-	 (RHEL_MAJOR -0 < 7 || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3))
+#if !defined(HAVE_IB_WR_REG_MR)
 		frpl = ib_alloc_fast_reg_page_list(device, max_page_list_len);
 		if (IS_ERR(frpl)) {
 			ret = PTR_ERR(frpl);
@@ -1220,9 +1214,7 @@ static int srp_alloc_req_data(struct srp_rdma_ch *ch)
 			req->fr_list = mr_list;
 		else
 			req->fmr_list = mr_list;
-#if !defined(RHEL_MAJOR) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) || \
-	(defined(RHEL_MAJOR) &&						\
-	 (RHEL_MAJOR -0 < 7 || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3))
+#if !defined(HAVE_IB_WR_REG_MR)
 		req->map_page = kmalloc(srp_dev->max_pages_per_mr *
 					sizeof(void *), GFP_KERNEL);
 		if (!req->map_page)
@@ -1712,9 +1704,7 @@ reset_state:
 	return 0;
 }
 
-#if !defined(RHEL_MAJOR) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) || \
-	(defined(RHEL_MAJOR) &&						\
-	 (RHEL_MAJOR -0 < 7 || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3))
+#if !defined(HAVE_IB_WR_REG_MR)
 static int srp_map_finish_fr(struct srp_map_state *state,
 			     struct srp_rdma_ch *ch)
 {
@@ -1785,7 +1775,7 @@ reset_state:
 
 	return 0;
 }
-#else /* LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) */
+#else /* !defined(HAVE_IB_WR_REG_MR) */
 /*
  * Map up to sg_nents elements of state->sg where *sg_offset_p is the offset
  * where to start in the first element. If sg_offset_p != NULL then
@@ -1875,11 +1865,9 @@ static int srp_map_finish_fr(struct srp_map_state *state,
 
 	return n;
 }
-#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) */
+#endif /* !defined(HAVE_IB_WR_REG_MR) */
 
-#if !defined(RHEL_MAJOR) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) || \
-	(defined(RHEL_MAJOR) &&						\
-	 (RHEL_MAJOR -0 < 7 || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3))
+#if !defined(HAVE_IB_WR_REG_MR)
 static int srp_finish_mapping(struct srp_map_state *state,
 			      struct srp_rdma_ch *ch)
 {
@@ -1910,9 +1898,7 @@ static int srp_map_sg_entry(struct srp_map_state *state,
 
 		if (state->npages == dev->max_pages_per_mr ||
 		    (state->npages > 0 && offset != 0)) {
-#if !defined(RHEL_MAJOR) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) || \
-	(defined(RHEL_MAJOR) &&						\
-	 (RHEL_MAJOR -0 < 7 || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3))
+#if !defined(HAVE_IB_WR_REG_MR)
 			ret = srp_finish_mapping(state, ch);
 #else
 			ret = srp_map_finish_fmr(state, ch);
@@ -1938,9 +1924,7 @@ static int srp_map_sg_entry(struct srp_map_state *state,
 	 */
 	ret = 0;
 	if ((dma_addr & ~dev->mr_page_mask) != 0)
-#if !defined(RHEL_MAJOR) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) || \
-	(defined(RHEL_MAJOR) &&						\
-	 (RHEL_MAJOR -0 < 7 || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3))
+#if !defined(HAVE_IB_WR_REG_MR)
 		ret = srp_finish_mapping(state, ch);
 #else
 		ret = srp_map_finish_fmr(state, ch);
@@ -1976,9 +1960,7 @@ static int srp_map_sg_fr(struct srp_map_state *state, struct srp_rdma_ch *ch,
 			 struct srp_request *req, struct scatterlist *scat,
 			 int count)
 {
-#if !defined(RHEL_MAJOR) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) || \
-	(defined(RHEL_MAJOR) &&						\
-	 (RHEL_MAJOR -0 < 7 || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3))
+#if !defined(HAVE_IB_WR_REG_MR)
 	struct scatterlist *sg;
 	int i, ret;
 
@@ -2056,10 +2038,7 @@ static int srp_map_idb(struct srp_rdma_ch *ch, struct srp_request *req,
 	struct srp_map_state state;
 	struct srp_direct_buf idb_desc;
 	u64 idb_pages[1];
-#if !defined(RHEL_MAJOR) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) || \
-	(defined(RHEL_MAJOR) &&						\
-	 (RHEL_MAJOR -0 < 7 || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3))
-#else
+#if defined(HAVE_IB_WR_REG_MR)
 	struct scatterlist idb_sg[1];
 #endif
 	int ret;
@@ -2069,7 +2048,7 @@ static int srp_map_idb(struct srp_rdma_ch *ch, struct srp_request *req,
 	state.gen.next = next_mr;
 	state.gen.end = end_mr;
 	state.desc = &idb_desc;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
+#if !defined(HAVE_IB_WR_REG_MR)
 	state.pages = idb_pages;
 	state.pages[0] = (req->indirect_dma_addr &
 			  dev->mr_page_mask);
@@ -2078,9 +2057,7 @@ static int srp_map_idb(struct srp_rdma_ch *ch, struct srp_request *req,
 	state.base_dma_addr = req->indirect_dma_addr;
 	state.dma_len = idb_len;
 
-#if !defined(RHEL_MAJOR) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0) || \
-	(defined(RHEL_MAJOR) &&						\
-	 (RHEL_MAJOR -0 < 7 || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3))
+#if !defined(HAVE_IB_WR_REG_MR)
 	ret = srp_finish_mapping(&state, ch);
 	if (ret < 0)
 		return ret;

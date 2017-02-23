@@ -220,6 +220,12 @@ conftest/ib_inc_rkey/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	conftest/ib_inc_rkey/Makefile
 	echo $(call run_conftest,ib_inc_rkey,-DHAVE_IB_INC_RKEY) >$@
 
+conftest/ib_mr_type_mem_reg/result-$(KVER).txt: $(KERNEL_IMAGE)	\
+	conftest/ib_mr_type_mem_reg/ib_mr_type_mem_reg.c	\
+	conftest/ib_mr_type_mem_reg/Makefile
+	echo $(call run_conftest,ib_mr_type_mem_reg,		\
+		-DHAVE_IB_MR_TYPE_MEM_REG) >$@
+
 conftest/ib_query_gid/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	conftest/ib_query_gid/ib_query_gid.c			\
 	conftest/ib_query_gid/Makefile
@@ -230,6 +236,11 @@ conftest/ib_sa_path_rec_get/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	conftest/ib_sa_path_rec_get/Makefile
 	echo $(call run_conftest,ib_sa_path_rec_get,		\
 		-DHAVE_IB_SA_PATH_REC_GET_MASK_ARG) >$@
+
+conftest/ib_wr_reg_mr/result-$(KVER).txt: $(KERNEL_IMAGE)	\
+	conftest/ib_wr_reg_mr/ib_wr_reg_mr.c			\
+	conftest/ib_wr_reg_mr/Makefile
+	echo $(call run_conftest,ib_wr_reg_mr,-DHAVE_IB_WR_REG_MR) >$@
 
 conftest/pd_local_dma_lkey/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	conftest/pd_local_dma_lkey/pd_local_dma_lkey.c		\

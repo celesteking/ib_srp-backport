@@ -302,10 +302,7 @@ static inline u8 rdma_end_port(const struct ib_device *device)
 }
 #endif
 
-#if	(!defined(RHEL_MAJOR) &&					\
-	 LINUX_VERSION_CODE < KERNEL_VERSION(4, 2, 0)) ||		\
-	(defined(RHEL_MAJOR) &&						\
-	 (RHEL_MAJOR -0 < 7 || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3))
+#if !defined(HAVE_IB_MR_TYPE_MEM_REG)
 /* See also commit 569e247f7aa6 */
 enum ib_mr_type {
 	IB_MR_TYPE_MEM_REG,

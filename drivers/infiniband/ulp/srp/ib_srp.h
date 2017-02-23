@@ -317,7 +317,7 @@ struct srp_iu {
 struct srp_fr_desc {
 	struct list_head		entry;
 	struct ib_mr			*mr;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
+#if !defined(HAVE_IB_WR_REG_MR)
 	struct ib_fast_reg_page_list	*frpl;
 #endif
 };
