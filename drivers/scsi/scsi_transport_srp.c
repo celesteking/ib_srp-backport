@@ -911,20 +911,6 @@ struct srp_rport *srp_rport_add(struct Scsi_Host *shost,
 		return ERR_PTR(ret);
 	}
 
-#if 0
-	if (shost->active_mode & MODE_TARGET &&
-	    ids->roles == SRP_RPORT_ROLE_INITIATOR) {
-		ret = srp_tgt_it_nexus_create(shost, (unsigned long)rport,
-					      rport->port_id);
-		if (ret) {
-			device_del(&rport->dev);
-			transport_destroy_device(&rport->dev);
-			put_device(&rport->dev);
-			return ERR_PTR(ret);
-		}
-	}
-#endif
-
 	transport_add_device(&rport->dev);
 	transport_configure_device(&rport->dev);
 
@@ -941,13 +927,6 @@ EXPORT_SYMBOL_GPL(srp_rport_add);
 void srp_rport_del(struct srp_rport *rport)
 {
 	struct device *dev = &rport->dev;
-#if 0
-	struct Scsi_Host *shost = dev_to_shost(dev->parent);
-
-	if (shost->active_mode & MODE_TARGET &&
-	    rport->roles == SRP_RPORT_ROLE_INITIATOR)
-		srp_tgt_it_nexus_destroy(shost, (unsigned long)rport);
-#endif
 
 	transport_remove_device(dev);
 	device_del(dev);
@@ -1005,21 +984,6 @@ void srp_stop_rport_timers(struct srp_rport *rport)
 }
 EXPORT_SYMBOL_GPL(srp_stop_rport_timers);
 
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 18)
-static int srp_tsk_mgmt_response(struct Scsi_Host *shost, u64 nexus, u64 tm_id,
-				 int result)
-{
-	struct srp_internal *i = to_srp_internal(shost->transportt);
-	return i->f->tsk_mgmt_response(shost, nexus, tm_id, result);
-}
-
-static int srp_it_nexus_response(struct Scsi_Host *shost, u64 nexus, int result)
-{
-	struct srp_internal *i = to_srp_internal(shost->transportt);
-	return i->f->it_nexus_response(shost, nexus, result);
-}
-#endif
-
 /**
  * srp_attach_transport  -  instantiate SRP transport template
  * @ft:		SRP transport class function template
@@ -1033,11 +997,6 @@ srp_attach_transport(struct srp_function_template *ft)
 	i = kzalloc(sizeof(*i), GFP_KERNEL);
 	if (!i)
 		return NULL;
-
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 18)
-	i->t.tsk_mgmt_response = srp_tsk_mgmt_response;
-	i->t.it_nexus_response = srp_it_nexus_response;
-#endif
 
 	i->t.host_size = sizeof(struct srp_host_attrs);
 	i->t.host_attrs.ac.attrs = &i->host_attrs[0];
