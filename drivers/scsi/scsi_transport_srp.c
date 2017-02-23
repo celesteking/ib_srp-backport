@@ -139,15 +139,6 @@ static DECLARE_TRANSPORT_CLASS(srp_host_class, "srp_host", srp_host_setup,
 static DECLARE_TRANSPORT_CLASS(srp_rport_class, "srp_remote_ports",
 			       NULL, NULL, NULL);
 
-#define SRP_PID(p) \
-	(p)->port_id[0], (p)->port_id[1], (p)->port_id[2], (p)->port_id[3], \
-	(p)->port_id[4], (p)->port_id[5], (p)->port_id[6], (p)->port_id[7], \
-	(p)->port_id[8], (p)->port_id[9], (p)->port_id[10], (p)->port_id[11], \
-	(p)->port_id[12], (p)->port_id[13], (p)->port_id[14], (p)->port_id[15]
-
-#define SRP_PID_FMT "%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x:" \
-	"%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x"
-
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(2, 6, 18)
 static ssize_t
 show_srp_rport_id(struct class_device *dev, char *buf)
@@ -158,7 +149,7 @@ show_srp_rport_id(struct device *dev, struct device_attribute *attr,
 #endif
 {
 	struct srp_rport *rport = transport_class_to_srp_rport(dev);
-	return sprintf(buf, SRP_PID_FMT "\n", SRP_PID(rport));
+	return sprintf(buf, "%16phC\n", rport->port_id);
 }
 
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(2, 6, 18)
