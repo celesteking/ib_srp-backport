@@ -116,7 +116,7 @@ struct srp_device {
 	struct list_head	dev_list;
 	struct ib_device       *dev;
 	struct ib_pd	       *pd;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+#if !HAVE_PD_GLOBAL_RKEY
 	struct ib_mr	       *global_mr;
 #endif
 	u32			global_rkey;

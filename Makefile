@@ -242,6 +242,12 @@ conftest/ib_wr_reg_mr/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	conftest/ib_wr_reg_mr/Makefile
 	echo $(call run_conftest,ib_wr_reg_mr,-DHAVE_IB_WR_REG_MR) >$@
 
+conftest/pd_global_rkey/result-$(KVER).txt: $(KERNEL_IMAGE)	\
+	conftest/pd_global_rkey/pd_global_rkey.c		\
+	conftest/pd_global_rkey/Makefile
+	echo $(call run_conftest,pd_global_rkey,		\
+		-DHAVE_PD_GLOBAL_RKEY=1,-DHAVE_PD_GLOBAL_RKEY=0) >$@
+
 conftest/pd_local_dma_lkey/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	conftest/pd_local_dma_lkey/pd_local_dma_lkey.c		\
 	conftest/pd_local_dma_lkey/Makefile

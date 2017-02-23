@@ -4828,7 +4828,7 @@ static void srp_add_one(struct ib_device *device)
 		srp_dev->use_fmr = !srp_dev->use_fast_reg && srp_dev->has_fmr;
 	}
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
+#if HAVE_PD_GLOBAL_RKEY
 	if (never_register || !register_always ||
 	    (!srp_dev->has_fmr && !srp_dev->has_fr))
 		flags |= IB_PD_UNSAFE_GLOBAL_RKEY;
@@ -4853,7 +4853,7 @@ static void srp_add_one(struct ib_device *device)
 	if (IS_ERR(srp_dev->pd))
 		goto free_dev;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+#if !HAVE_PD_GLOBAL_RKEY
 	if (never_register || !register_always ||
 	    (!srp_dev->has_fmr && !srp_dev->has_fr) ||
 	    !HAVE_PD_LOCAL_DMA_LKEY) {
@@ -4883,7 +4883,7 @@ static void srp_add_one(struct ib_device *device)
 
 	goto free_attr;
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+#if !HAVE_PD_GLOBAL_RKEY
 err_pd:
 	ib_dealloc_pd(srp_dev->pd);
 #endif
