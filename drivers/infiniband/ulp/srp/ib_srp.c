@@ -4419,7 +4419,7 @@ static ssize_t srp_create_target(struct device *dev,
 	target->io_class	= SRP_REV16A_IB_IO_CLASS;
 	target->scsi_host	= target_host;
 	target->srp_host	= host;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 3, 0)
+#if !HAVE_PD_LOCAL_DMA_LKEY
 	target->lkey		= host->srp_dev->global_mr->lkey;
 #else
 	target->lkey		= host->srp_dev->pd->local_dma_lkey;
