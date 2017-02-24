@@ -6,8 +6,11 @@
 *.mod.c
 *.o
 *.o.cmd
+*.o.d
 *.sdtinfo.c
 .tmp_versions/
+conftest/*/result-*.txt
 Module.symvers
 Module.symvers.tmp
 modules.order
+rpmbuilddir/

@@ -63,49 +63,21 @@ endif
 
 INSTALL_MOD_DIR ?= extra
 
-GOALS:=$(if $(MAKECMDGOALS),$(MAKECMDGOALS),all)
-OTHER_GOALS:=$(foreach goal,$(MAKECMDGOALS),$(subst all,,$(goal)))
-# echo:=$(shell echo 'GOALS = $(GOALS)' >&2)
-# echo:=$(shell echo 'OTHER_GOALS = $(OTHER_GOALS)' >&2)
-ifneq ("$(GOALS)","$(OTHER_GOALS)")
 run_conftest = $(shell if [ "0$(V)" -gt 0 ]; then output=/dev/stdout; else output=/dev/null; fi; if $(MAKE) -C $(KDIR) V=$(V) SUBDIRS="$(shell pwd)/conftest/$1" PRE_CFLAGS="-Werror $(OFED_CFLAGS)" 1>&2 2>$${output}; then echo "$2"; else echo "$3"; fi)
-HAVE_IB_CQ_INIT_ATTR := $(call run_conftest,ib_cq_init_attr,-DHAVE_IB_CQ_INIT_ATTR)
-HAVE_IB_CREATE_CQ_ATTR_ARG := $(call run_conftest,create_cq,-DHAVE_IB_CREATE_CQ_ATTR_ARG)
-HAVE_IB_DEVICE_SG_GAPS_REG := $(call run_conftest,ib_device_sg_gaps_reg,-DHAVE_IB_DEVICE_SG_GAPS_REG)
-HAVE_IB_DMA_MAP_OPS := $(call run_conftest,ib_dma_map_ops,-DHAVE_IB_DMA_MAP_OPS)
-HAVE_IB_FMR_POOL_MAP_PHYS_ARG5 := $(call run_conftest,ib_fmr_pool_map_phys,-DHAVE_IB_FMR_POOL_MAP_PHYS_ARG5)
-HAVE_IB_INC_RKEY := $(call run_conftest,ib_inc_rkey,-DHAVE_IB_INC_RKEY)
-HAVE_IB_QUERY_GID_WITH_ATTR := $(call run_conftest,ib_query_gid,-DHAVE_IB_QUERY_GID_WITH_ATTR)
-HAVE_IB_SA_PATH_REC_GET_MASK_ARG := $(call run_conftest,ib_sa_path_rec_get,-DHAVE_IB_SA_PATH_REC_GET_MASK_ARG)
-HAVE_PD_LOCAL_DMA_LKEY := $(call run_conftest,pd_local_dma_lkey,-DHAVE_PD_LOCAL_DMA_LKEY=1,-DHAVE_PD_LOCAL_DMA_LKEY=0)
-RDMA_CREATE_ID              := $(call run_conftest,rdma_create_id_net,-DRDMA_CREATE_ID_TAKES_NET_ARG=1,-DRDMA_CREATE_ID_TAKES_NET_ARG=0)
-HAVE_SCSI_MQ := $(call run_conftest,scsi_mq,-DHAVE_SCSI_MQ)
-HAVE_SCSI_QDEPTH_REASON := $(call run_conftest,scsi_qdepth_reason,-DHAVE_SCSI_QDEPTH_REASON)
-HAVE_STRUCT_IB_GID_ATTR := $(call run_conftest,ib_gid_attr,-DHAVE_STRUCT_IB_GID_ATTR)
-HAVE_SYSTEM_LONG_WQ := $(call run_conftest,system_long_wq,-DHAVE_SYSTEM_LONG_WQ)
-HAVE_TRACK_QUEUE_DEPTH := $(call run_conftest,track_queue_depth,-DHAVE_TRACK_QUEUE_DEPTH)
-HAVE_USE_BLK_TAGS := $(call run_conftest,use_blk_tags,-DHAVE_USE_BLK_TAGS)
-PRE_CFLAGS := $(OFED_CFLAGS)			\
-	$(HAVE_IB_CQ_INIT_ATTR)			\
-	$(HAVE_IB_CREATE_CQ_ATTR_ARG)		\
-	$(HAVE_IB_DEVICE_SG_GAPS_REG)		\
-	$(HAVE_IB_DMA_MAP_OPS)			\
-	$(HAVE_IB_FMR_POOL_MAP_PHYS_ARG5)	\
-	$(HAVE_IB_INC_RKEY)			\
-	$(HAVE_IB_QUERY_GID_WITH_ATTR)		\
-	$(HAVE_IB_SA_PATH_REC_GET_MASK_ARG)	\
-	$(HAVE_PD_LOCAL_DMA_LKEY)		\
-	$(RDMA_CREATE_ID)			\
-	$(HAVE_SCSI_MQ)				\
-	$(HAVE_SCSI_QDEPTH_REASON)		\
-	$(HAVE_STRUCT_IB_GID_ATTR)		\
-	$(HAVE_SYSTEM_LONG_WQ)			\
-	$(HAVE_TRACK_QUEUE_DEPTH)		\
-	$(HAVE_USE_BLK_TAGS)			\
-	-DOFED_FLAVOR=$(OFED_FLAVOR)
-endif
 
-all: check
+CONFTESTS = $(shell ls -d conftest/*)
+CONFTEST_OUTPUTS = $(shell			\
+	for t in $(CONFTESTS); do		\
+		echo $$t/result-$(KVER).txt;	\
+	done)
+
+PRE_CFLAGS = $(OFED_CFLAGS)			\
+	-DOFED_FLAVOR=$(OFED_FLAVOR)		\
+	$(shell for t in $(CONFTESTS); do 	\
+		cat $$t/result-$(KVER).txt 2>/dev/null; \
+	done)
+
+all: check $(CONFTEST_OUTPUTS)
 	@m="$(shell pwd)/drivers/scsi/$(MODULE_SYMVERS)";	   	   \
 	cat "$(KDIR)/$(MODULE_SYMVERS)" $(OFED_MODULE_SYMVERS) |	   \
 	awk '{sym[$$2]=$$0} END {for (s in sym){print sym[s]}}' >"$$m";    \
@@ -189,11 +161,100 @@ rpm:
 	rm -f ib_srp-backport-$(VERSION).tar.bz2
 
 clean:
-	$(MAKE) -C $(KDIR) M=$(shell pwd)/drivers/scsi clean
-	$(MAKE) -C $(KDIR) M=$(shell pwd)/drivers/infiniband/ulp/srp clean
-	rm -f Modules.symvers Module.symvers Module.markers modules.order
+	for d in drivers/scsi drivers/infiniband/ulp/srp conftest/*; do	\
+	(cd "$$d" &&							\
+	rm -rf ./{*.mod.c,*.o,.*.o.d,*.ko,*.o.cmd,*.ko.cmd,.*o.cmd,*.mod,Module*.symvers,modules.order,result-$(KVER).txt,.tmp_versions});	\
+	done
 
 extraclean: clean
 	rm -f *.orig *.rej
+
+KERNEL_IMAGE := /boot/vmlinuz-$(KVER)
+
+conftest/create_cq/result-$(KVER).txt: $(KERNEL_IMAGE)		\
+	conftest/create_cq/create_cq.c				\
+	conftest/create_cq/Makefile
+	echo $(call run_conftest,create_cq,-DHAVE_IB_CREATE_CQ_ATTR_ARG) >$@
+
+conftest/ib_cq_init_attr/result-$(KVER).txt: $(KERNEL_IMAGE)	\
+	conftest/ib_cq_init_attr/ib_cq_init_attr.c		\
+	conftest/ib_cq_init_attr/Makefile
+	echo $(call run_conftest,ib_cq_init_attr,-DHAVE_IB_CQ_INIT_ATTR) >$@
+
+conftest/ib_device_sg_gaps_reg/result-$(KVER).txt: $(KERNEL_IMAGE)\
+	conftest/ib_device_sg_gaps_reg/ib_device_sg_gaps_reg.c	\
+	conftest/ib_device_sg_gaps_reg/Makefile
+	echo $(call run_conftest,ib_device_sg_gaps_reg,		\
+		-DHAVE_IB_DEVICE_SG_GAPS_REG) >$@
+
+conftest/ib_dma_map_ops/result-$(KVER).txt: $(KERNEL_IMAGE)	\
+	conftest/ib_dma_map_ops/ib_dma_map_ops.c		\
+	conftest/ib_dma_map_ops/Makefile
+	echo $(call run_conftest,ib_dma_map_ops,-DHAVE_IB_DMA_MAP_OPS) >$@
+
+conftest/ib_fmr_pool_map_phys/result-$(KVER).txt: $(KERNEL_IMAGE)\
+	conftest/ib_fmr_pool_map_phys/ib_fmr_pool_map_phys.c	\
+	conftest/ib_fmr_pool_map_phys/Makefile
+	echo $(call run_conftest,ib_fmr_pool_map_phys,		\
+		-DHAVE_IB_FMR_POOL_MAP_PHYS_ARG5) >$@
+
+conftest/ib_gid_attr/result-$(KVER).txt: $(KERNEL_IMAGE)	\
+	conftest/ib_gid_attr/ib_gid_attr.c			\
+	conftest/ib_gid_attr/Makefile
+	echo $(call run_conftest,ib_gid_attr,-DHAVE_STRUCT_IB_GID_ATTR) >$@
+
+conftest/ib_inc_rkey/result-$(KVER).txt: $(KERNEL_IMAGE)	\
+	conftest/ib_inc_rkey/ib_inc_rkey.c			\
+	conftest/ib_inc_rkey/Makefile
+	echo $(call run_conftest,ib_inc_rkey,-DHAVE_IB_INC_RKEY) >$@
+
+conftest/ib_query_gid/result-$(KVER).txt: $(KERNEL_IMAGE)	\
+	conftest/ib_query_gid/ib_query_gid.c			\
+	conftest/ib_query_gid/Makefile
+	echo $(call run_conftest,ib_query_gid,-DHAVE_IB_QUERY_GID_WITH_ATTR) >$@
+
+conftest/ib_sa_path_rec_get/result-$(KVER).txt: $(KERNEL_IMAGE)	\
+	conftest/ib_sa_path_rec_get/ib_sa_path_rec_get.c	\
+	conftest/ib_sa_path_rec_get/Makefile
+	echo $(call run_conftest,ib_sa_path_rec_get,		\
+		-DHAVE_IB_SA_PATH_REC_GET_MASK_ARG) >$@
+
+conftest/pd_local_dma_lkey/result-$(KVER).txt: $(KERNEL_IMAGE)	\
+	conftest/pd_local_dma_lkey/pd_local_dma_lkey.c		\
+	conftest/pd_local_dma_lkey/Makefile
+	echo $(call run_conftest,pd_local_dma_lkey,		\
+		-DHAVE_PD_LOCAL_DMA_LKEY=1,-DHAVE_PD_LOCAL_DMA_LKEY=0) >$@
+
+conftest/rdma_create_id_net/result-$(KVER).txt: $(KERNEL_IMAGE)	\
+	conftest/rdma_create_id_net/rdma_create_id_net.c	\
+	conftest/rdma_create_id_net/Makefile
+	echo $(call run_conftest,rdma_create_id_net,		\
+		-DRDMA_CREATE_ID_TAKES_NET_ARG=1,		\
+		-DRDMA_CREATE_ID_TAKES_NET_ARG=0) >$@
+
+conftest/scsi_mq/result-$(KVER).txt: $(KERNEL_IMAGE)		\
+	conftest/scsi_mq/scsi_mq.c				\
+	conftest/scsi_mq/Makefile
+	echo $(call run_conftest,scsi_mq,-DHAVE_SCSI_MQ) >$@
+
+conftest/scsi_qdepth_reason/result-$(KVER).txt: $(KERNEL_IMAGE)	\
+	conftest/scsi_qdepth_reason/scsi_qdepth_reason.c	\
+	conftest/scsi_qdepth_reason/Makefile
+	echo $(call run_conftest,scsi_qdepth_reason,-DHAVE_SCSI_QDEPTH_REASON) >$@
+
+conftest/system_long_wq/result-$(KVER).txt: $(KERNEL_IMAGE)	\
+	conftest/system_long_wq/system_long_wq.c		\
+	conftest/system_long_wq/Makefile
+	echo $(call run_conftest,system_long_wq,-DHAVE_SYSTEM_LONG_WQ) >$@
+
+conftest/track_queue_depth/result-$(KVER).txt: $(KERNEL_IMAGE)	\
+	conftest/track_queue_depth/track_queue_depth.c		\
+	conftest/track_queue_depth/Makefile
+	echo $(call run_conftest,track_queue_depth,-DHAVE_TRACK_QUEUE_DEPTH) >$@
+
+conftest/use_blk_tags/result-$(KVER).txt: $(KERNEL_IMAGE)	\
+	conftest/use_blk_tags/use_blk_tags.c			\
+	conftest/use_blk_tags/Makefile
+	echo $(call run_conftest,use_blk_tags,-DHAVE_USE_BLK_TAGS) >$@
 
 .PHONY: all check clean dist-gzip extraclean install rpm
