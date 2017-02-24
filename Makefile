@@ -77,20 +77,32 @@ PRE_CFLAGS = $(OFED_CFLAGS)			\
 		cat $$t/result-$(KVER).txt 2>/dev/null; \
 	done)
 
-all: check $(CONFTEST_OUTPUTS)
-	@m="$(shell pwd)/drivers/scsi/$(MODULE_SYMVERS)";	   	   \
+all: check drivers/scsi/scsi_transport_srp.ko	\
+	drivers/infiniband/ulp/srp/ib_srp.ko
+
+drivers/scsi/$(MODULE_SYMVERS): $(KDIR)/$(MODULE_SYMVERS) $(OFED_MODULE_SYMVERS)
 	cat "$(KDIR)/$(MODULE_SYMVERS)" $(OFED_MODULE_SYMVERS) |	   \
-	awk '{sym[$$2]=$$0} END {for (s in sym){print sym[s]}}' >"$$m";    \
+	awk '{sym[$$2]=$$0} END {for (s in sym){print sym[s]}}' >"$@"
+
+drivers/infiniband/ulp/srp/$(MODULE_SYMVERS): $(KDIR)/$(MODULE_SYMVERS)	   \
+	$(OFED_MODULE_SYMVERS) drivers/scsi/$(MODULE_SYMVERS)
+	cat "$(KDIR)/$(MODULE_SYMVERS)" $(OFED_MODULE_SYMVERS)		   \
+		"drivers/scsi/$(MODULE_SYMVERS)" |			   \
+	awk '{sym[$$2]=$$0} END {for (s in sym){print sym[s]}}' >"$@"
+
+drivers/scsi/scsi_transport_srp.ko: drivers/scsi/$(MODULE_SYMVERS)	   \
+	drivers/scsi/scsi_transport_srp.c $(CONFTEST_OUTPUTS)
 	CONFIG_SCSI_SRP_ATTRS=m						   \
 		$(MAKE) -C $(KDIR) M=$(shell pwd)/drivers/scsi		   \
 		PRE_CFLAGS='$(PRE_CFLAGS)' modules
-	@m="$(shell pwd)/drivers/infiniband/ulp/srp/$(MODULE_SYMVERS)";	   \
-	cat "$(KDIR)/$(MODULE_SYMVERS)" $(OFED_MODULE_SYMVERS)		   \
-		"$(shell pwd)/drivers/scsi/$(MODULE_SYMVERS)" |		   \
-	awk '{sym[$$2]=$$0} END {for (s in sym){print sym[s]}}' >"$$m";	   \
+
+drivers/infiniband/ulp/srp/ib_srp.ko: drivers/scsi/$(MODULE_SYMVERS)	   \
+	drivers/infiniband/ulp/srp/$(MODULE_SYMVERS)			   \
+	drivers/infiniband/ulp/srp/ib_srp.c $(CONFTEST_OUTPUTS)
 	CONFIG_SCSI_SRP_ATTRS=m CONFIG_SCSI_SRP=m CONFIG_INFINIBAND_SRP=m  \
 	$(MAKE) -C $(KDIR) M=$(shell pwd)/drivers/infiniband/ulp/srp	   \
-	    PRE_CFLAGS='$(PRE_CFLAGS) -DBUILD_CFLAGS='"'"'$(PRE_CFLAGS)'"'"'' modules
+	    PRE_CFLAGS='$(PRE_CFLAGS) -DBUILD_CFLAGS='"'"'$(PRE_CFLAGS)'"'"'' \
+	    modules
 
 install: all
 	for d in drivers/scsi drivers/infiniband/ulp/srp; do	   	   \
