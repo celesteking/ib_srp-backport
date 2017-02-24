@@ -201,7 +201,6 @@ static void srp_add_one(struct ib_device *device);
 	 LINUX_VERSION_CODE < KERNEL_VERSION(4, 3, 0)) ||		\
 	(defined(RHEL_MAJOR) &&						\
 	 (RHEL_MAJOR -0 < 7 || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3))
-
 static void srp_remove_one(struct ib_device *device);
 #else
 static void srp_remove_one(struct ib_device *device, void *client_data);
