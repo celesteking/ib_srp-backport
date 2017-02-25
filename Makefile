@@ -64,6 +64,7 @@ endif
 INSTALL_MOD_DIR ?= extra
 
 run_conftest = $(shell if [ "0$(V)" -gt 0 ]; then output=/dev/stdout; else output=/dev/null; fi; if $(MAKE) -C $(KDIR) V=$(V) SUBDIRS="$(shell pwd)/conftest/$1" PRE_CFLAGS="-Werror $(OFED_CFLAGS)" 1>&2 2>$${output}; then echo "$2"; else echo "$3"; fi)
+run_conftest_bool = $(call run_conftest,$1,-D$(strip $2)=1,-D$(strip $2)=0)
 
 CONFTESTS = $(shell ls -d conftest/*)
 CONFTEST_OUTPUTS = $(shell			\
@@ -223,8 +224,7 @@ conftest/ib_inc_rkey/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 conftest/ib_mr_length/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	conftest/ib_mr_length/ib_mr_length.c			\
 	conftest/ib_mr_length/Makefile
-	echo $(call run_conftest,ib_mr_length,			\
-		-DHAVE_IB_MR_LENGTH=1,-DHAVE_IB_MR_LENGTH=0) >$@
+	echo "$(call run_conftest_bool,ib_mr_length,HAVE_IB_MR_LENGTH)" >"$@"
 
 conftest/ib_mr_type_mem_reg/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	conftest/ib_mr_type_mem_reg/ib_mr_type_mem_reg.c	\
@@ -251,21 +251,20 @@ conftest/ib_wr_reg_mr/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 conftest/pd_global_rkey/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	conftest/pd_global_rkey/pd_global_rkey.c		\
 	conftest/pd_global_rkey/Makefile
-	echo $(call run_conftest,pd_global_rkey,		\
-		-DHAVE_PD_GLOBAL_RKEY=1,-DHAVE_PD_GLOBAL_RKEY=0) >$@
+	echo "$(call run_conftest_bool,pd_global_rkey,		\
+		HAVE_PD_GLOBAL_RKEY)" >"$@"
 
 conftest/pd_local_dma_lkey/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	conftest/pd_local_dma_lkey/pd_local_dma_lkey.c		\
 	conftest/pd_local_dma_lkey/Makefile
-	echo $(call run_conftest,pd_local_dma_lkey,		\
-		-DHAVE_PD_LOCAL_DMA_LKEY=1,-DHAVE_PD_LOCAL_DMA_LKEY=0) >$@
+	echo "$(call run_conftest_bool,pd_local_dma_lkey,	\
+		HAVE_PD_LOCAL_DMA_LKEY)" >"$@"
 
 conftest/rdma_create_id_net/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	conftest/rdma_create_id_net/rdma_create_id_net.c	\
 	conftest/rdma_create_id_net/Makefile
-	echo $(call run_conftest,rdma_create_id_net,		\
-		-DRDMA_CREATE_ID_TAKES_NET_ARG=1,		\
-		-DRDMA_CREATE_ID_TAKES_NET_ARG=0) >$@
+	echo "$(call run_conftest_bool,rdma_create_id_net,	\
+		RDMA_CREATE_ID_TAKES_NET_ARG)" >"$@"
 
 conftest/scsi_mq/result-$(KVER).txt: $(KERNEL_IMAGE)		\
 	conftest/scsi_mq/scsi_mq.c				\
