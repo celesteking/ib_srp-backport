@@ -293,6 +293,12 @@ conftest/rdma_create_id_net/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	echo "$(call run_conftest_bool,rdma_create_id_net,	\
 		RDMA_CREATE_ID_TAKES_NET_ARG)" >"$@"
 
+conftest/scsi_host_use_blk_mq/result-$(KVER).txt: $(KERNEL_IMAGE)\
+	conftest/scsi_host_use_blk_mq/scsi_host_use_blk_mq.c	\
+	conftest/scsi_host_use_blk_mq/Makefile
+	echo $(call run_conftest_bool,scsi_host_use_blk_mq,	\
+		HAVE_SCSI_HOST_USE_BLK_MQ) >$@
+
 conftest/scsi_mq/result-$(KVER).txt: $(KERNEL_IMAGE)		\
 	conftest/scsi_mq/scsi_mq.c				\
 	conftest/scsi_mq/Makefile
