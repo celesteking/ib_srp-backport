@@ -211,8 +211,14 @@ static void srp_remove_one(struct ib_device *device);
 #else
 static void srp_remove_one(struct ib_device *device, void *client_data);
 #endif
+#if !HAVE_IB_ALLOC_CQ
 static void srp_recv_completion(struct ib_cq *cq, void *ch_ptr);
 static void srp_send_completion(struct ib_cq *cq, void *ch_ptr);
+#else
+static void srp_recv_done(struct ib_cq *cq, struct ib_wc *wc);
+static void srp_handle_qp_err(struct ib_cq *cq, struct ib_wc *wc,
+		const char *opname);
+#endif
 static int srp_ib_cm_handler(struct ib_cm_id *cm_id, struct ib_cm_event *event);
 static int srp_rdma_cm_handler(struct rdma_cm_id *cm_id,
 			       struct rdma_cm_event *event);
@@ -631,11 +637,34 @@ static struct srp_fr_pool *srp_alloc_fr_pool(struct srp_target_port *target)
 				  dev->max_pages_per_mr);
 }
 
+#if HAVE_IB_ALLOC_CQ
+struct ib_drain_cqe {
+	struct ib_cqe cqe;
+	struct srp_rdma_ch *ch;
+};
+
+static void ib_drain_qp_done(struct ib_cq *cq, struct ib_wc *wc)
+{
+	struct ib_drain_cqe *cqe = container_of(wc->wr_cqe, struct ib_drain_cqe,
+						cqe);
+
+	pr_debug("cqe = %p; ch = %p; ch->done = %p\n", cqe, cqe->ch,
+		 &cqe->ch->done);
+	complete(&cqe->ch->done);
+}
+#endif
+
 static void __srp_drain_sq(struct ib_qp *qp)
 {
 	struct ib_cq *cq = qp->send_cq;
 	struct srp_rdma_ch *ch = cq->cq_context;
 	static struct ib_qp_attr attr = { .qp_state = IB_QPS_ERR };
+#if HAVE_IB_ALLOC_CQ
+	struct ib_drain_cqe sdrain = {
+		.cqe.done = ib_drain_qp_done,
+		.ch	  = ch,
+	};
+#endif
 	struct ib_send_wr swr = { }, *bad_swr;
 	int i, ret = -ETIMEDOUT;
 
@@ -644,7 +673,11 @@ static void __srp_drain_sq(struct ib_qp *qp)
 
 	pr_debug("ch = %p; &ch->done = %p\n", ch, &ch->done);
 
+#if !HAVE_IB_ALLOC_CQ
 	swr.wr_id = SRP_LAST_WR_ID;
+#else
+	swr.wr_cqe = &sdrain.cqe;
+#endif
 	swr.opcode = IB_WR_RDMA_WRITE;
 
 	ret = ib_modify_qp(qp, &attr, IB_QP_STATE);
@@ -658,7 +691,11 @@ static void __srp_drain_sq(struct ib_qp *qp)
 
 	for (i = 0; i < 50 && (ret = wait_for_completion_timeout(&ch->done,
 		HZ / 10)) == 0; i++) {
+#if !HAVE_IB_ALLOC_CQ
 		srp_send_completion(qp->send_cq, ch);
+#else
+		ib_process_cq_direct(cq, -1);
+#endif
 	}
 
 	WARN_ONCE(ret <= 0, "ret = %d\n", ret);
@@ -669,6 +706,12 @@ static void __srp_drain_rq(struct ib_qp *qp)
 	struct ib_cq *cq = qp->recv_cq;
 	struct srp_rdma_ch *ch = cq->cq_context;
 	static struct ib_qp_attr attr = { .qp_state = IB_QPS_ERR };
+#if HAVE_IB_ALLOC_CQ
+	struct ib_drain_cqe rdrain = {
+		.cqe.done = ib_drain_qp_done,
+		.ch	  = ch,
+	};
+#endif
 	struct ib_recv_wr rwr = { }, *bad_wr;
 	int ret;
 
@@ -677,7 +720,11 @@ static void __srp_drain_rq(struct ib_qp *qp)
 
 	pr_debug("ch = %p; &ch->done = %p\n", ch, &ch->done);
 
+#if !HAVE_IB_ALLOC_CQ
 	rwr.wr_id = SRP_LAST_WR_ID;
+#else
+	rwr.wr_cqe = &rdrain.cqe;
+#endif
 
 	ret = ib_modify_qp(qp, &attr, IB_QP_STATE);
 	if (WARN_ONCE(ret, "ib_modify_qp() returned %d\n", ret))
@@ -710,7 +757,7 @@ static void srp_drain_qp(struct ib_qp *qp)
 static void srp_destroy_qp(struct srp_rdma_ch *ch)
 {
 	spin_lock_irq(&ch->lock);
-#if 1
+#if !HAVE_IB_ALLOC_CQ
 	srp_send_completion(ch->send_cq, ch);
 #else
 	ib_process_cq_direct(ch->send_cq, -1);
@@ -735,33 +782,47 @@ static int srp_create_ch_ib(struct srp_rdma_ch *ch)
 	struct ib_fmr_pool *fmr_pool = NULL;
 	struct srp_fr_pool *fr_pool = NULL;
 	const int m = 1 + dev->use_fast_reg * target->mr_per_cmd * 2;
+#if !HAVE_IB_ALLOC_CQ
 	struct ib_cq_init_attr cq_attr = {};
+#endif
 	int ret;
 
 	init_attr = kzalloc(sizeof *init_attr, GFP_KERNEL);
 	if (!init_attr)
 		return -ENOMEM;
 
-	/* + 1 for ib_drain_rq() */
+	/* queue_size + 1 for ib_drain_rq() */
+#if !HAVE_IB_ALLOC_CQ
 	cq_attr.cqe = target->queue_size + 1;
 	cq_attr.comp_vector = ch->comp_vector;
 	recv_cq = ib_create_cq(dev->dev, srp_recv_completion, NULL, ch,
 			       &cq_attr);
+#else
+	recv_cq = ib_alloc_cq(dev->dev, ch, target->queue_size + 1,
+				ch->comp_vector, IB_POLL_SOFTIRQ);
+#endif
 	if (IS_ERR(recv_cq)) {
 		ret = PTR_ERR(recv_cq);
 		goto err;
 	}
 
+#if !HAVE_IB_ALLOC_CQ
 	cq_attr.cqe = m * target->queue_size;
 	cq_attr.comp_vector = ch->comp_vector;
 	send_cq = ib_create_cq(dev->dev, srp_send_completion, NULL, ch,
 			       &cq_attr);
+#else
+	send_cq = ib_alloc_cq(dev->dev, ch, m * target->queue_size,
+				ch->comp_vector, IB_POLL_DIRECT);
+#endif
 	if (IS_ERR(send_cq)) {
 		ret = PTR_ERR(send_cq);
 		goto err_recv_cq;
 	}
 
+#if !HAVE_IB_ALLOC_CQ
 	ib_req_notify_cq(recv_cq, IB_CQ_NEXT_COMP);
+#endif
 
 	init_attr->event_handler       = srp_qp_event;
 	init_attr->cap.max_send_wr     = m * target->queue_size;
@@ -813,9 +874,17 @@ static int srp_create_ch_ib(struct srp_rdma_ch *ch)
 	if (ch->qp)
 		srp_destroy_qp(ch);
 	if (ch->recv_cq)
+#if !HAVE_IB_ALLOC_CQ
 		ib_destroy_cq(ch->recv_cq);
+#else
+		ib_free_cq(ch->recv_cq);
+#endif
 	if (ch->send_cq)
+#if !HAVE_IB_ALLOC_CQ
 		ib_destroy_cq(ch->send_cq);
+#else
+		ib_free_cq(ch->send_cq);
+#endif
 
 	ch->qp = qp;
 	ch->recv_cq = recv_cq;
@@ -841,10 +910,18 @@ err_qp:
 		ib_destroy_qp(qp);
 
 err_send_cq:
+#if !HAVE_IB_ALLOC_CQ
 	ib_destroy_cq(send_cq);
+#else
+	ib_free_cq(send_cq);
+#endif
 
 err_recv_cq:
+#if !HAVE_IB_ALLOC_CQ
 	ib_destroy_cq(recv_cq);
+#else
+	ib_free_cq(recv_cq);
+#endif
 
 err:
 	kfree(init_attr);
@@ -888,8 +965,13 @@ static void srp_free_ch_ib(struct srp_target_port *target,
 			ib_destroy_fmr_pool(ch->fmr_pool);
 	}
 	srp_destroy_qp(ch);
+#if !HAVE_IB_ALLOC_CQ
 	ib_destroy_cq(ch->send_cq);
 	ib_destroy_cq(ch->recv_cq);
+#else
+	ib_free_cq(ch->send_cq);
+	ib_free_cq(ch->recv_cq);
+#endif
 
 	/*
 	 * Avoid that the SCSI error handler tries to use this channel after
@@ -1419,6 +1501,13 @@ out:
 	return ret <= 0 ? ret : -ENODEV;
 }
 
+#if HAVE_IB_ALLOC_CQ
+static void srp_inv_rkey_err_done(struct ib_cq *cq, struct ib_wc *wc)
+{
+	srp_handle_qp_err(cq, wc, "INV RKEY");
+}
+#endif
+
 static int srp_inv_rkey(struct srp_request *req, struct srp_rdma_ch *ch,
 		u32 rkey)
 {
@@ -1431,8 +1520,12 @@ static int srp_inv_rkey(struct srp_request *req, struct srp_rdma_ch *ch,
 		.ex.invalidate_rkey = rkey,
 	};
 
+#if !HAVE_IB_ALLOC_CQ
 	wr.wr_id = LOCAL_INV_WR_ID_MASK;
-
+#else
+	wr.wr_cqe = &req->reg_cqe;
+	req->reg_cqe.done = srp_inv_rkey_err_done;
+#endif
 	return ib_post_send(ch->qp, &wr, &bad_wr);
 }
 
@@ -1723,6 +1816,13 @@ reset_state:
 	return 0;
 }
 
+#if HAVE_IB_ALLOC_CQ
+static void srp_reg_mr_err_done(struct ib_cq *cq, struct ib_wc *wc)
+{
+	srp_handle_qp_err(cq, wc, "FAST REG");
+}
+#endif
+
 #if !HAVE_IB_WR_REG_MR
 static int srp_map_finish_fr(struct srp_map_state *state,
 			     struct srp_request *req,
@@ -1766,7 +1866,12 @@ static int srp_map_finish_fr(struct srp_map_state *state,
 
 	memset(&wr, 0, sizeof(wr));
 	wr.opcode = IB_WR_FAST_REG_MR;
+#if !HAVE_IB_ALLOC_CQ
 	wr.wr_id = FAST_REG_WR_ID_MASK;
+#else
+	wr.wr_cqe = &req->reg_cqe;
+	req->reg_cqe.done = srp_reg_mr_err_done;
+#endif
 	wr.wr.fast_reg.iova_start = state->base_dma_addr;
 	wr.wr.fast_reg.page_list = desc->frpl;
 	wr.wr.fast_reg.page_list_len = state->npages;
@@ -1860,9 +1965,17 @@ static int srp_map_finish_fr(struct srp_map_state *state,
 
 	WARN_ON_ONCE(desc->mr->length == 0);
 
+#if HAVE_IB_ALLOC_CQ
+	req->reg_cqe.done = srp_reg_mr_err_done;
+#endif
+
 	wr.wr.next = NULL;
 	wr.wr.opcode = IB_WR_REG_MR;
+#if !HAVE_IB_ALLOC_CQ
 	wr.wr.wr_id = FAST_REG_WR_ID_MASK;
+#else
+	wr.wr.wr_cqe = &req->reg_cqe;
+#endif
 	wr.wr.num_sge = 0;
 	wr.wr.send_flags = 0;
 	wr.mr = desc->mr;
@@ -2370,7 +2483,11 @@ static struct srp_iu *__srp_get_tx_iu(struct srp_rdma_ch *ch,
 
 	lockdep_assert_held(&ch->lock);
 
+#if !HAVE_IB_ALLOC_CQ
 	srp_send_completion(ch->send_cq, ch);
+#else
+	ib_process_cq_direct(ch->send_cq, -1);
+#endif
 
 	if (list_empty(&ch->free_tx))
 		return NULL;
@@ -2390,6 +2507,28 @@ static struct srp_iu *__srp_get_tx_iu(struct srp_rdma_ch *ch,
 	return iu;
 }
 
+#if HAVE_IB_ALLOC_CQ
+/*
+ * Note: if this function is called from inside ib_drain_sq() then it will
+ * be called without ch->lock being held. If ib_drain_sq() dequeues a WQE
+ * with status IB_WC_SUCCESS then that's a bug.
+ */
+static void srp_send_done(struct ib_cq *cq, struct ib_wc *wc)
+{
+	struct srp_iu *iu = container_of(wc->wr_cqe, struct srp_iu, cqe);
+	struct srp_rdma_ch *ch = cq->cq_context;
+
+	if (unlikely(wc->status != IB_WC_SUCCESS)) {
+		srp_handle_qp_err(cq, wc, "SEND");
+		return;
+	}
+
+	lockdep_assert_held(&ch->lock);
+
+	list_add(&iu->list, &ch->free_tx);
+}
+#endif
+
 static int srp_post_send(struct srp_rdma_ch *ch, struct srp_iu *iu, int len)
 {
 	struct srp_target_port *target = ch->target;
@@ -2402,8 +2541,16 @@ static int srp_post_send(struct srp_rdma_ch *ch, struct srp_iu *iu, int len)
 	iu->sge[0].length = len;
 	iu->sge[0].lkey   = target->lkey;
 
+#if HAVE_IB_ALLOC_CQ
+	iu->cqe.done = srp_send_done;
+#endif
+
 	wr.next       = NULL;
+#if !HAVE_IB_ALLOC_CQ
 	wr.wr_id      = (uintptr_t) iu;
+#else
+	wr.wr_cqe     = &iu->cqe;
+#endif
 	wr.sg_list    = &iu->sge[0];
 	wr.num_sge    = iu->num_sge;
 	wr.opcode     = IB_WR_SEND;
@@ -2422,8 +2569,16 @@ static int srp_post_recv(struct srp_rdma_ch *ch, struct srp_iu *iu)
 	list.length = iu->size;
 	list.lkey   = target->lkey;
 
+#if HAVE_IB_ALLOC_CQ
+	iu->cqe.done = srp_recv_done;
+#endif
+
 	wr.next     = NULL;
+#if !HAVE_IB_ALLOC_CQ
 	wr.wr_id    = (uintptr_t) iu;
+#else
+	wr.wr_cqe   = &iu->cqe;
+#endif
 	wr.sg_list  = &list;
 	wr.num_sge  = 1;
 
@@ -2580,13 +2735,29 @@ static void srp_process_aer_req(struct srp_rdma_ch *ch,
 			     "problems processing SRP_AER_REQ\n");
 }
 
+#if !HAVE_IB_ALLOC_CQ
 static void srp_handle_recv(struct srp_rdma_ch *ch, struct ib_wc *wc)
+#else
+static void srp_recv_done(struct ib_cq *cq, struct ib_wc *wc)
+#endif
 {
+#if !HAVE_IB_ALLOC_CQ
+	struct srp_iu *iu = (struct srp_iu *) (uintptr_t) wc->wr_id;
+#else
+	struct srp_iu *iu = container_of(wc->wr_cqe, struct srp_iu, cqe);
+	struct srp_rdma_ch *ch = cq->cq_context;
+#endif
 	struct srp_target_port *target = ch->target;
 	struct ib_device *dev = target->srp_host->srp_dev->dev;
-	struct srp_iu *iu = (struct srp_iu *) (uintptr_t) wc->wr_id;
 	int res;
 	u8 opcode;
+
+#if HAVE_IB_ALLOC_CQ
+	if (unlikely(wc->status != IB_WC_SUCCESS)) {
+		srp_handle_qp_err(cq, wc, "RECV");
+		return;
+	}
+#endif
 
 	ib_dma_sync_single_for_cpu(dev, iu->dma, ch->max_ti_iu_len,
 				   DMA_FROM_DEVICE);
@@ -2662,12 +2833,15 @@ static void srp_handle_qp_err(struct ib_cq *cq, struct ib_wc *wc,
 	struct srp_rdma_ch *ch = cq->cq_context;
 	struct srp_target_port *target = ch->target;
 
+#if !HAVE_IB_ALLOC_CQ
 	if (wc->wr_id == SRP_LAST_WR_ID) {
 		complete(&ch->done);
 		return;
 	}
+#endif
 
 	if (ch->connected && !target->qp_in_error) {
+#if !HAVE_IB_ALLOC_CQ
 		if (wc->wr_id & LOCAL_INV_WR_ID_MASK) {
 			shost_printk(KERN_ERR, target->scsi_host, PFX
 				     "LOCAL_INV failed with status %s (%d)\n",
@@ -2683,11 +2857,18 @@ static void srp_handle_qp_err(struct ib_cq *cq, struct ib_wc *wc,
 				     ib_wc_status_msg(wc->status), wc->status,
 				     (void *)(uintptr_t)wc->wr_id);
 		}
+#else
+		shost_printk(KERN_ERR, target->scsi_host,
+			     PFX "failed %s status %s (%d) for CQE %p\n",
+			     opname, ib_wc_status_msg(wc->status), wc->status,
+			     wc->wr_cqe);
+#endif
 		queue_work(system_long_wq, &target->tl_err_work);
 	}
 	target->qp_in_error = true;
 }
 
+#if !HAVE_IB_ALLOC_CQ
 static void srp_recv_completion(struct ib_cq *cq, void *ch_ptr)
 {
 	struct srp_rdma_ch *ch = ch_ptr;
@@ -2728,6 +2909,7 @@ static void srp_send_completion(struct ib_cq *cq, void *ch_ptr)
 		}
 	}
 }
+#endif
 
 #if !HAVE_SCSI_MQ
 static struct srp_rdma_ch *srp_map_cpu_to_ch(struct srp_target_port *target)

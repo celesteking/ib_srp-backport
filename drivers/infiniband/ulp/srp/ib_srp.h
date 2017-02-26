@@ -68,10 +68,12 @@ enum {
 
 	SRP_MAX_PAGES_PER_MR	= 512,
 
+#if !HAVE_IB_ALLOC_CQ
 	LOCAL_INV_WR_ID_MASK	= 1,
 	FAST_REG_WR_ID_MASK	= 2,
 
 	SRP_LAST_WR_ID		= 0xfffffffcU,
+#endif
 
 	SRP_MAX_IMM_SGE		= 2,
 	SRP_IMM_DATA_OUT_OFFSET	= 80,
@@ -162,6 +164,9 @@ struct srp_request {
 #if !HAVE_SCSI_MQ
 	uint32_t		tag;
 #endif
+#if HAVE_IB_ALLOC_CQ
+	struct ib_cqe		reg_cqe;
+#endif
 };
 
 /**
@@ -188,8 +193,10 @@ struct srp_rdma_ch {
 		struct ib_fmr_pool     *fmr_pool;
 		struct srp_fr_pool     *fr_pool;
 	};
+#if !HAVE_IB_ALLOC_CQ
 	struct ib_wc		recv_wc[16];
 	struct ib_wc		send_wc[16];
+#endif
 
 	/* Everything above this point is used in the hot path of
 	 * command processing. Try to keep them packed into cachelines.
@@ -307,6 +314,9 @@ struct srp_iu {
 	enum dma_data_direction	direction;
 	u32			num_sge;
 	struct ib_sge		sge[1 + SRP_MAX_IMM_SGE];
+#if HAVE_IB_ALLOC_CQ
+	struct ib_cqe		cqe;
+#endif
 };
 
 /**

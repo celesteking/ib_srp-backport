@@ -189,6 +189,11 @@ conftest/create_cq/result-$(KVER).txt: $(KERNEL_IMAGE)		\
 	conftest/create_cq/Makefile
 	echo "$(call run_conftest_bool,create_cq,HAVE_IB_CREATE_CQ_ATTR_ARG)" >"$@"
 
+conftest/ib_alloc_cq/result-$(KVER).txt: $(KERNEL_IMAGE)	\
+	conftest/ib_alloc_cq/ib_alloc_cq.c		\
+	conftest/ib_alloc_cq/Makefile
+	echo "$(call run_conftest_bool,ib_alloc_cq,HAVE_IB_ALLOC_CQ)" >"$@"
+
 conftest/ib_cq_init_attr/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	conftest/ib_cq_init_attr/ib_cq_init_attr.c		\
 	conftest/ib_cq_init_attr/Makefile
