@@ -643,7 +643,7 @@ static void srp_destroy_qp(struct srp_rdma_ch *ch)
 {
 #if 1
 	static struct ib_qp_attr attr = { .qp_state = IB_QPS_ERR };
-	static struct ib_recv_wr wr = { 0 };
+	static struct ib_recv_wr wr;
 	struct ib_recv_wr *bad_wr;
 	int ret;
 
