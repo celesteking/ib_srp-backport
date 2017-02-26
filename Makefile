@@ -187,39 +187,42 @@ KERNEL_IMAGE := /boot/vmlinuz-$(KVER)
 conftest/create_cq/result-$(KVER).txt: $(KERNEL_IMAGE)		\
 	conftest/create_cq/create_cq.c				\
 	conftest/create_cq/Makefile
-	echo $(call run_conftest,create_cq,-DHAVE_IB_CREATE_CQ_ATTR_ARG) >$@
+	echo "$(call run_conftest_bool,create_cq,HAVE_IB_CREATE_CQ_ATTR_ARG)" >"$@"
 
 conftest/ib_cq_init_attr/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	conftest/ib_cq_init_attr/ib_cq_init_attr.c		\
 	conftest/ib_cq_init_attr/Makefile
-	echo $(call run_conftest,ib_cq_init_attr,-DHAVE_IB_CQ_INIT_ATTR) >$@
+	echo "$(call run_conftest_bool,ib_cq_init_attr,HAVE_IB_CQ_INIT_ATTR)" >"$@"
 
 conftest/ib_device_sg_gaps_reg/result-$(KVER).txt: $(KERNEL_IMAGE)\
 	conftest/ib_device_sg_gaps_reg/ib_device_sg_gaps_reg.c	\
 	conftest/ib_device_sg_gaps_reg/Makefile
-	echo $(call run_conftest,ib_device_sg_gaps_reg,		\
-		-DHAVE_IB_DEVICE_SG_GAPS_REG) >$@
+	echo "$(call run_conftest_bool,ib_device_sg_gaps_reg,	\
+		HAVE_IB_DEVICE_SG_GAPS_REG)" >"$@"
 
 conftest/ib_dma_map_ops/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	conftest/ib_dma_map_ops/ib_dma_map_ops.c		\
 	conftest/ib_dma_map_ops/Makefile
-	echo $(call run_conftest,ib_dma_map_ops,-DHAVE_IB_DMA_MAP_OPS) >$@
+	echo "$(call run_conftest_bool,ib_dma_map_ops,		\
+		HAVE_IB_DMA_MAP_OPS)" >"$@"
 
 conftest/ib_fmr_pool_map_phys/result-$(KVER).txt: $(KERNEL_IMAGE)\
 	conftest/ib_fmr_pool_map_phys/ib_fmr_pool_map_phys.c	\
 	conftest/ib_fmr_pool_map_phys/Makefile
-	echo $(call run_conftest,ib_fmr_pool_map_phys,		\
-		-DHAVE_IB_FMR_POOL_MAP_PHYS_ARG5) >$@
+	echo "$(call run_conftest_bool,ib_fmr_pool_map_phys,	\
+		HAVE_IB_FMR_POOL_MAP_PHYS_ARG5)" >"$@"
 
 conftest/ib_gid_attr/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	conftest/ib_gid_attr/ib_gid_attr.c			\
 	conftest/ib_gid_attr/Makefile
-	echo $(call run_conftest,ib_gid_attr,-DHAVE_STRUCT_IB_GID_ATTR) >$@
+	echo "$(call run_conftest_bool,ib_gid_attr,		\
+		HAVE_STRUCT_IB_GID_ATTR)" >"$@"
 
 conftest/ib_inc_rkey/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	conftest/ib_inc_rkey/ib_inc_rkey.c			\
 	conftest/ib_inc_rkey/Makefile
-	echo $(call run_conftest,ib_inc_rkey,-DHAVE_IB_INC_RKEY) >$@
+	echo "$(call run_conftest_bool,ib_inc_rkey,		\
+		HAVE_IB_INC_RKEY)" >"$@"
 
 conftest/ib_mr_length/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	conftest/ib_mr_length/ib_mr_length.c			\
@@ -229,24 +232,25 @@ conftest/ib_mr_length/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 conftest/ib_mr_type_mem_reg/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	conftest/ib_mr_type_mem_reg/ib_mr_type_mem_reg.c	\
 	conftest/ib_mr_type_mem_reg/Makefile
-	echo $(call run_conftest,ib_mr_type_mem_reg,		\
-		-DHAVE_IB_MR_TYPE_MEM_REG) >$@
+	echo "$(call run_conftest_bool,ib_mr_type_mem_reg,	\
+		HAVE_IB_MR_TYPE_MEM_REG)" >"$@"
 
 conftest/ib_query_gid/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	conftest/ib_query_gid/ib_query_gid.c			\
 	conftest/ib_query_gid/Makefile
-	echo $(call run_conftest,ib_query_gid,-DHAVE_IB_QUERY_GID_WITH_ATTR) >$@
+	echo "$(call run_conftest_bool,ib_query_gid,		\
+		HAVE_IB_QUERY_GID_WITH_ATTR)" >"$@"
 
 conftest/ib_sa_path_rec_get/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	conftest/ib_sa_path_rec_get/ib_sa_path_rec_get.c	\
 	conftest/ib_sa_path_rec_get/Makefile
-	echo $(call run_conftest,ib_sa_path_rec_get,		\
-		-DHAVE_IB_SA_PATH_REC_GET_MASK_ARG) >$@
+	echo "$(call run_conftest_bool,ib_sa_path_rec_get,	\
+		HAVE_IB_SA_PATH_REC_GET_MASK_ARG)" >"$@"
 
 conftest/ib_wr_reg_mr/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	conftest/ib_wr_reg_mr/ib_wr_reg_mr.c			\
 	conftest/ib_wr_reg_mr/Makefile
-	echo $(call run_conftest,ib_wr_reg_mr,-DHAVE_IB_WR_REG_MR) >$@
+	echo "$(call run_conftest_bool,ib_wr_reg_mr,HAVE_IB_WR_REG_MR)" >"$@"
 
 conftest/pd_global_rkey/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	conftest/pd_global_rkey/pd_global_rkey.c		\
@@ -269,26 +273,29 @@ conftest/rdma_create_id_net/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 conftest/scsi_mq/result-$(KVER).txt: $(KERNEL_IMAGE)		\
 	conftest/scsi_mq/scsi_mq.c				\
 	conftest/scsi_mq/Makefile
-	echo $(call run_conftest,scsi_mq,-DHAVE_SCSI_MQ) >$@
+	echo "$(call run_conftest_bool,scsi_mq,HAVE_SCSI_MQ)" >"$@"
 
 conftest/scsi_qdepth_reason/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	conftest/scsi_qdepth_reason/scsi_qdepth_reason.c	\
 	conftest/scsi_qdepth_reason/Makefile
-	echo $(call run_conftest,scsi_qdepth_reason,-DHAVE_SCSI_QDEPTH_REASON) >$@
+	echo "$(call run_conftest_bool,scsi_qdepth_reason,	\
+		HAVE_SCSI_QDEPTH_REASON)" >"$@"
 
 conftest/system_long_wq/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	conftest/system_long_wq/system_long_wq.c		\
 	conftest/system_long_wq/Makefile
-	echo $(call run_conftest,system_long_wq,-DHAVE_SYSTEM_LONG_WQ) >$@
+	echo "$(call run_conftest_bool,system_long_wq,		\
+		HAVE_SYSTEM_LONG_WQ)" >"$@"
 
 conftest/track_queue_depth/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	conftest/track_queue_depth/track_queue_depth.c		\
 	conftest/track_queue_depth/Makefile
-	echo $(call run_conftest,track_queue_depth,-DHAVE_TRACK_QUEUE_DEPTH) >$@
+	echo "$(call run_conftest_bool,track_queue_depth,	\
+		HAVE_TRACK_QUEUE_DEPTH)" >"$@"
 
 conftest/use_blk_tags/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	conftest/use_blk_tags/use_blk_tags.c			\
 	conftest/use_blk_tags/Makefile
-	echo $(call run_conftest,use_blk_tags,-DHAVE_USE_BLK_TAGS) >$@
+	echo "$(call run_conftest_bool,use_blk_tags,HAVE_USE_BLK_TAGS)" >"$@"
 
 .PHONY: all check clean dist-gzip extraclean install rpm

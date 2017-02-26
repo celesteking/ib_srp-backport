@@ -509,7 +509,7 @@ static void srp_destroy_fr_pool(struct srp_fr_pool *pool)
 		return;
 
 	for (i = 0, d = &pool->desc[0]; i < pool->size; i++, d++) {
-#if !defined(HAVE_IB_WR_REG_MR)
+#if !HAVE_IB_WR_REG_MR
 		if (d->frpl)
 			ib_free_fast_reg_page_list(d->frpl);
 #endif
@@ -533,7 +533,7 @@ static struct srp_fr_pool *srp_create_fr_pool(struct ib_device *device,
 	struct srp_fr_pool *pool;
 	struct srp_fr_desc *d;
 	struct ib_mr *mr;
-#if !defined(HAVE_IB_WR_REG_MR)
+#if !HAVE_IB_WR_REG_MR
 	struct ib_fast_reg_page_list *frpl;
 #endif
 	int i, ret = -EINVAL;
@@ -561,7 +561,7 @@ static struct srp_fr_pool *srp_create_fr_pool(struct ib_device *device,
 			goto destroy_pool;
 		}
 		d->mr = mr;
-#if !defined(HAVE_IB_WR_REG_MR)
+#if !HAVE_IB_WR_REG_MR
 		frpl = ib_alloc_fast_reg_page_list(device, max_page_list_len);
 		if (IS_ERR(frpl)) {
 			ret = PTR_ERR(frpl);
@@ -1216,7 +1216,7 @@ static int srp_alloc_req_data(struct srp_rdma_ch *ch)
 	dma_addr_t dma_addr;
 	int i, ret = -ENOMEM;
 
-#ifndef HAVE_SCSI_MQ
+#if !HAVE_SCSI_MQ
 	INIT_LIST_HEAD(&ch->free_reqs);
 #endif
 
@@ -1235,7 +1235,7 @@ static int srp_alloc_req_data(struct srp_rdma_ch *ch)
 			req->fr_list = mr_list;
 		else
 			req->fmr_list = mr_list;
-#if !defined(HAVE_IB_WR_REG_MR)
+#if !HAVE_IB_WR_REG_MR
 		req->map_page = kmalloc(srp_dev->max_pages_per_mr *
 					sizeof(void *), GFP_KERNEL);
 		if (!req->map_page)
@@ -1259,7 +1259,7 @@ static int srp_alloc_req_data(struct srp_rdma_ch *ch)
 			goto out;
 
 		req->indirect_dma_addr = dma_addr;
-#ifndef HAVE_SCSI_MQ
+#if !HAVE_SCSI_MQ
 		req->tag = build_srp_tag(ch - target->ch, i);
 		list_add_tail(&req->list, &ch->free_reqs);
 #endif
@@ -1315,7 +1315,7 @@ static void srp_remove_target(struct srp_target_port *target)
 		ch = &target->ch[i];
 		srp_free_req_data(target, ch);
 	}
-#ifndef HAVE_SCSI_MQ
+#if !HAVE_SCSI_MQ
 	kfree(target->mq_map);
 	target->mq_map = NULL;
 #endif
@@ -1527,7 +1527,7 @@ static void srp_free_req(struct srp_rdma_ch *ch, struct srp_request *req,
 
 	spin_lock_irqsave(&ch->lock, flags);
 	ch->req_lim += req_lim_delta;
-#ifndef HAVE_SCSI_MQ
+#if !HAVE_SCSI_MQ
 	list_add_tail(&req->list, &ch->free_reqs);
 #endif
 	spin_unlock_irqrestore(&ch->lock, flags);
@@ -1696,7 +1696,7 @@ static int srp_map_finish_fmr(struct srp_map_state *state,
 		goto reset_state;
 	}
 
-#if defined(HAVE_IB_FMR_POOL_MAP_PHYS_ARG5)
+#if HAVE_IB_FMR_POOL_MAP_PHYS_ARG5
 	/*
 	 * With Oracle UEK Linux kernel revision 400 ib_fmr_pool_map_phys()
 	 * takes five arguments. With revision 200 ib_fmr_pool_map_phys()
@@ -1725,7 +1725,7 @@ reset_state:
 	return 0;
 }
 
-#if !defined(HAVE_IB_WR_REG_MR)
+#if !HAVE_IB_WR_REG_MR
 static int srp_map_finish_fr(struct srp_map_state *state,
 			     struct srp_rdma_ch *ch)
 {
@@ -1796,7 +1796,7 @@ reset_state:
 
 	return 0;
 }
-#else /* !defined(HAVE_IB_WR_REG_MR) */
+#else /* !HAVE_IB_WR_REG_MR */
 /*
  * Map up to sg_nents elements of state->sg where *sg_offset_p is the offset
  * where to start in the first element. If sg_offset_p != NULL then
@@ -1886,9 +1886,9 @@ static int srp_map_finish_fr(struct srp_map_state *state,
 
 	return n;
 }
-#endif /* !defined(HAVE_IB_WR_REG_MR) */
+#endif /* !HAVE_IB_WR_REG_MR */
 
-#if !defined(HAVE_IB_WR_REG_MR)
+#if !HAVE_IB_WR_REG_MR
 static int srp_finish_mapping(struct srp_map_state *state,
 			      struct srp_rdma_ch *ch)
 {
@@ -1919,7 +1919,7 @@ static int srp_map_sg_entry(struct srp_map_state *state,
 
 		if (state->npages == dev->max_pages_per_mr ||
 		    (state->npages > 0 && offset != 0)) {
-#if !defined(HAVE_IB_WR_REG_MR)
+#if !HAVE_IB_WR_REG_MR
 			ret = srp_finish_mapping(state, ch);
 #else
 			ret = srp_map_finish_fmr(state, ch);
@@ -1945,7 +1945,7 @@ static int srp_map_sg_entry(struct srp_map_state *state,
 	 */
 	ret = 0;
 	if ((dma_addr & ~dev->mr_page_mask) != 0)
-#if !defined(HAVE_IB_WR_REG_MR)
+#if !HAVE_IB_WR_REG_MR
 		ret = srp_finish_mapping(state, ch);
 #else
 		ret = srp_map_finish_fmr(state, ch);
@@ -1981,7 +1981,7 @@ static int srp_map_sg_fr(struct srp_map_state *state, struct srp_rdma_ch *ch,
 			 struct srp_request *req, struct scatterlist *scat,
 			 int count)
 {
-#if !defined(HAVE_IB_WR_REG_MR)
+#if !HAVE_IB_WR_REG_MR
 	struct scatterlist *sg;
 	int i, ret;
 
@@ -2059,7 +2059,7 @@ static int srp_map_idb(struct srp_rdma_ch *ch, struct srp_request *req,
 	struct srp_map_state state;
 	struct srp_direct_buf idb_desc;
 	u64 idb_pages[1];
-#if defined(HAVE_IB_WR_REG_MR)
+#if HAVE_IB_WR_REG_MR
 	struct scatterlist idb_sg[1];
 #endif
 	int ret;
@@ -2069,7 +2069,7 @@ static int srp_map_idb(struct srp_rdma_ch *ch, struct srp_request *req,
 	state.gen.next = next_mr;
 	state.gen.end = end_mr;
 	state.desc = &idb_desc;
-#if !defined(HAVE_IB_WR_REG_MR)
+#if !HAVE_IB_WR_REG_MR
 	state.pages = idb_pages;
 	state.pages[0] = (req->indirect_dma_addr &
 			  dev->mr_page_mask);
@@ -2078,7 +2078,7 @@ static int srp_map_idb(struct srp_rdma_ch *ch, struct srp_request *req,
 	state.base_dma_addr = req->indirect_dma_addr;
 	state.dma_len = idb_len;
 
-#if !defined(HAVE_IB_WR_REG_MR)
+#if !HAVE_IB_WR_REG_MR
 	ret = srp_finish_mapping(&state, ch);
 	if (ret < 0)
 		return ret;
@@ -2435,7 +2435,7 @@ static void srp_process_rsp(struct srp_rdma_ch *ch, struct srp_rsp *rsp)
 	struct srp_request *req;
 	struct scsi_cmnd *scmnd;
 	unsigned long flags;
-#ifndef HAVE_SCSI_MQ
+#if !HAVE_SCSI_MQ
 	unsigned i;
 #endif
 
@@ -2454,7 +2454,7 @@ static void srp_process_rsp(struct srp_rdma_ch *ch, struct srp_rsp *rsp)
 		}
 		spin_unlock_irqrestore(&ch->lock, flags);
 	} else {
-#ifdef HAVE_SCSI_MQ
+#if HAVE_SCSI_MQ
 		scmnd = scsi_host_find_tag(target->scsi_host, rsp->tag);
 		if (scmnd && scmnd->host_scribble) {
 			req = (void *)scmnd->host_scribble;
@@ -2730,7 +2730,7 @@ static void srp_send_completion(struct ib_cq *cq, void *ch_ptr)
 	}
 }
 
-#ifndef HAVE_SCSI_MQ
+#if !HAVE_SCSI_MQ
 static struct srp_rdma_ch *srp_map_cpu_to_ch(struct srp_target_port *target)
 {
 	return &target->ch[target->mq_map[raw_smp_processor_id()]];
@@ -2791,7 +2791,7 @@ static int SRP_QUEUECOMMAND(struct Scsi_Host *shost, struct scsi_cmnd *scmnd)
 	struct ib_device *dev;
 	unsigned long flags;
 	u32 tag;
-#ifdef HAVE_SCSI_MQ
+#if HAVE_SCSI_MQ
 	u16 idx;
 #endif
 	int len, ret;
@@ -2823,7 +2823,7 @@ static int SRP_QUEUECOMMAND(struct Scsi_Host *shost, struct scsi_cmnd *scmnd)
 		goto err;
 	}
 
-#ifdef HAVE_SCSI_MQ
+#if HAVE_SCSI_MQ
 	WARN_ON_ONCE(scmnd->request->tag < 0);
 	tag = blk_mq_unique_tag(scmnd->request);
 	ch = &target->ch[blk_mq_unique_tag_to_hwq(tag)];
@@ -2840,7 +2840,7 @@ static int SRP_QUEUECOMMAND(struct Scsi_Host *shost, struct scsi_cmnd *scmnd)
 	if (!iu)
 		goto err_unlock;
 
-#ifdef HAVE_SCSI_MQ
+#if HAVE_SCSI_MQ
 	req = &ch->req_ring[idx];
 #else
 	req = list_first_entry(&ch->free_reqs, struct srp_request, list);
@@ -2910,7 +2910,7 @@ err_iu:
 	req->scmnd = NULL;
 
 	spin_lock_irqsave(&ch->lock, flags);
-#ifndef HAVE_SCSI_MQ
+#if !HAVE_SCSI_MQ
 	list_add(&req->list, &ch->free_reqs);
 #endif
 
@@ -3364,7 +3364,7 @@ static int srp_rdma_cm_handler(struct rdma_cm_id *cm_id,
 	return 0;
 }
 
-#ifndef HAVE_TRACK_QUEUE_DEPTH
+#if !HAVE_TRACK_QUEUE_DEPTH
 /**
  * srp_change_queue_type - changing device queue tag type
  * @sdev: scsi device struct
@@ -3398,17 +3398,17 @@ srp_change_queue_type(struct scsi_device *sdev, int tag_type)
  * Returns queue depth.
  */
 static int
-#ifdef HAVE_SCSI_QDEPTH_REASON
+#if HAVE_SCSI_QDEPTH_REASON
 srp_change_queue_depth(struct scsi_device *sdev, int qdepth, int reason)
 {
 #else
 srp_change_queue_depth(struct scsi_device *sdev, int qdepth)
 {
-#ifndef HAVE_TRACK_QUEUE_DEPTH
+#if !HAVE_TRACK_QUEUE_DEPTH
 	const int reason = SCSI_QDEPTH_DEFAULT;
 #endif
 #endif
-#ifdef HAVE_TRACK_QUEUE_DEPTH
+#if HAVE_TRACK_QUEUE_DEPTH
 	if (!sdev->tagged_supported)
 		qdepth = 1;
 	return scsi_change_queue_depth(sdev, qdepth);
@@ -3510,7 +3510,7 @@ static int srp_abort(struct scsi_cmnd *scmnd)
 
 	if (!req)
 		return SUCCESS;
-#ifdef HAVE_SCSI_MQ
+#if HAVE_SCSI_MQ
 	tag = blk_mq_unique_tag(scmnd->request);
 	ch_idx = blk_mq_unique_tag_to_hwq(tag);
 #else
@@ -3910,7 +3910,7 @@ static struct scsi_host_template srp_template = {
 #endif
 	.queuecommand			= srp_queuecommand,
 	.change_queue_depth             = srp_change_queue_depth,
-#ifndef HAVE_TRACK_QUEUE_DEPTH
+#if !HAVE_TRACK_QUEUE_DEPTH
 	.change_queue_type              = srp_change_queue_type,
 #endif
 	.eh_timed_out			= srp_timed_out,
@@ -3924,10 +3924,10 @@ static struct scsi_host_template srp_template = {
 	.cmd_per_lun			= SRP_DEFAULT_CMD_SQ_SIZE,
 	.use_clustering			= ENABLE_CLUSTERING,
 	.shost_attrs			= srp_host_attrs,
-#ifdef HAVE_USE_BLK_TAGS
+#if HAVE_USE_BLK_TAGS
 	.use_blk_tags			= 1,
 #endif
-#ifdef HAVE_TRACK_QUEUE_DEPTH
+#if HAVE_TRACK_QUEUE_DEPTH
 	.track_queue_depth		= 1,
 #endif
 };
@@ -4406,7 +4406,7 @@ static ssize_t srp_create_target(struct device *dev,
 	struct ib_device *ibdev = srp_dev->dev;
 	int ret, node_idx, node, cpu, i;
 	unsigned int max_sectors_per_mr, mr_per_cmd = 0;
-#ifndef HAVE_SCSI_MQ
+#if !HAVE_SCSI_MQ
 	int first_cpu = -1;
 #endif
 	bool multich = false;
@@ -4451,7 +4451,7 @@ static ssize_t srp_create_target(struct device *dev,
 	if (ret)
 		goto out;
 
-#ifdef HAVE_USE_BLK_TAGS
+#if HAVE_USE_BLK_TAGS
 	ret = scsi_init_shared_tag_map(target_host, target_host->can_queue);
 	if (ret)
 		goto out;
@@ -4543,7 +4543,7 @@ static ssize_t srp_create_target(struct device *dev,
 	if (!target->ch)
 		goto out;
 
-#ifndef HAVE_SCSI_MQ
+#if !HAVE_SCSI_MQ
 	target->mq_map = kcalloc(nr_cpu_ids, sizeof(*target->mq_map),
 				 GFP_KERNEL);
 	if (!target->mq_map)
@@ -4567,7 +4567,7 @@ static ssize_t srp_create_target(struct device *dev,
 		for_each_online_cpu(cpu) {
 			if (cpu_to_node(cpu) != node)
 				continue;
-#ifndef HAVE_SCSI_MQ
+#if !HAVE_SCSI_MQ
 			if (first_cpu < 0)
 				first_cpu = cpu;
 			target->mq_map[cpu] = ch_start == ch_end ? ch_start :
@@ -4612,7 +4612,7 @@ static ssize_t srp_create_target(struct device *dev,
 				} else {
 					srp_free_ch_ib(target, ch);
 					srp_free_req_data(target, ch);
-#ifndef HAVE_SCSI_MQ
+#if !HAVE_SCSI_MQ
 					target->mq_map[cpu] = first_cpu;
 #endif
 					target->ch_count = ch - target->ch;
@@ -4627,7 +4627,7 @@ static ssize_t srp_create_target(struct device *dev,
 	}
 
 connected:
-#ifdef HAVE_SCSI_MQ
+#if HAVE_SCSI_MQ
 	target->scsi_host->nr_hw_queues = target->ch_count;
 #else
 	if (first_cpu != 0)
@@ -4682,7 +4682,7 @@ free_ch:
 		srp_free_req_data(target, ch);
 	}
 
-#ifndef HAVE_SCSI_MQ
+#if !HAVE_SCSI_MQ
 	kfree(target->mq_map);
 
 err_free_ch:

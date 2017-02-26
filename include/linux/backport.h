@@ -125,7 +125,7 @@ typedef unsigned long uintptr_t;
 #endif
 
 /* <rdma/ib_sa.h> */
-#if defined(HAVE_IB_SA_PATH_REC_GET_MASK_ARG)
+#if HAVE_IB_SA_PATH_REC_GET_MASK_ARG
 static inline int ib_sa_path_rec_get_compat(struct ib_sa_client *client,
 					    struct ib_device *device,
 					    u8 port_num,
@@ -146,7 +146,7 @@ static inline int ib_sa_path_rec_get_compat(struct ib_sa_client *client,
 #endif
 
 /* <rdma/ib_verbs.h> */
-#ifndef HAVE_IB_DMA_MAP_OPS
+#if !HAVE_IB_DMA_MAP_OPS
 static inline int ib_dma_mapping_error(struct ib_device *dev, u64 dma_addr)
 {
 	return dma_mapping_error(dev->dma_device, dma_addr);
@@ -292,7 +292,7 @@ static inline struct ib_pd *ib_alloc_pd_backport(struct ib_device *device)
 	})
 #endif
 /* commit 7083e42e */
-#if !defined(HAVE_IB_INC_RKEY)
+#if !HAVE_IB_INC_RKEY
 /**
  * ib_inc_rkey - increments the key portion of the given rkey. Can be used
  * for calculating a new rkey for type 2 memory windows.
@@ -323,7 +323,7 @@ static inline u8 rdma_end_port(const struct ib_device *device)
 }
 #endif
 
-#if !defined(HAVE_IB_MR_TYPE_MEM_REG)
+#if !HAVE_IB_MR_TYPE_MEM_REG
 /* See also commit 569e247f7aa6 */
 enum ib_mr_type {
 	IB_MR_TYPE_MEM_REG,
@@ -361,9 +361,9 @@ ib_wc_status_msg(enum ib_wc_status status)
 }
 #endif
 
-#if !defined(HAVE_IB_CREATE_CQ_ATTR_ARG)
+#if !HAVE_IB_CREATE_CQ_ATTR_ARG
 /* See also commit bcf4c1ea */
-#if !defined(HAVE_IB_CQ_INIT_ATTR)
+#if !HAVE_IB_CQ_INIT_ATTR
 struct ib_cq_init_attr {
 	unsigned int	cqe;
 	int		comp_vector;
@@ -383,8 +383,8 @@ static inline struct ib_cq *ib_create_cq_compat(struct ib_device *device,
 #define ib_create_cq ib_create_cq_compat
 #endif
 
-#if !defined(HAVE_IB_QUERY_GID_WITH_ATTR)
-#if !defined(HAVE_STRUCT_IB_GID_ATTR)
+#if !HAVE_IB_QUERY_GID_WITH_ATTR
+#if !HAVE_STRUCT_IB_GID_ATTR
 struct ib_gid_attr {
 };
 #endif
@@ -473,7 +473,7 @@ static inline void scsi_target_unblock_compat(struct device *dev,
 #define scsi_target_unblock scsi_target_unblock_compat
 
 /* <scsi/scsi_host.h> */
-#ifndef HAVE_SCSI_QDEPTH_REASON
+#if !HAVE_SCSI_QDEPTH_REASON
 /*
  * See also commit e881a172 (modify change_queue_depth to take in reason why it
  * is being called).
