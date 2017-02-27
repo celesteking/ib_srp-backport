@@ -36,7 +36,6 @@
 #include <scsi/scsi_transport.h>
 #include "../../include/scsi/scsi_transport_srp.h"
 #include "scsi_priv.h"
-#include "scsi_transport_srp_internal.h"
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 36)
 struct workqueue_struct *srp_wq;
