@@ -1235,19 +1235,12 @@ static int srp_alloc_req_data(struct srp_rdma_ch *ch)
 			req->fr_list = mr_list;
 		else
 			req->fmr_list = mr_list;
-#if !HAVE_IB_WR_REG_MR
-		req->map_page = kmalloc(srp_dev->max_pages_per_mr *
-					sizeof(void *), GFP_KERNEL);
-		if (!req->map_page)
-			goto out;
-#else
-		if (!srp_dev->use_fast_reg) {
+		if (!srp_dev->use_fast_reg || !HAVE_IB_WR_REG_MR) {
 			req->map_page = kmalloc(srp_dev->max_pages_per_mr *
 						sizeof(void *), GFP_KERNEL);
 			if (!req->map_page)
 				goto out;
 		}
-#endif
 		req->indirect_desc = kmalloc(target->indirect_size, GFP_KERNEL);
 		if (!req->indirect_desc)
 			goto out;
