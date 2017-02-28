@@ -2652,31 +2652,32 @@ static void srp_tl_err_work(struct work_struct *work)
 		srp_start_tl_fail_timers(target->rport);
 }
 
-static void srp_handle_qp_err(u64 wr_id, enum ib_wc_status wc_status,
-			      bool send_err, struct srp_rdma_ch *ch)
+static void srp_handle_qp_err(struct ib_cq *cq, struct ib_wc *wc,
+		const char *opname)
 {
+	struct srp_rdma_ch *ch = cq->cq_context;
 	struct srp_target_port *target = ch->target;
 
-	if (wr_id == SRP_LAST_WR_ID) {
+	if (wc->wr_id == SRP_LAST_WR_ID) {
 		complete(&ch->done);
 		return;
 	}
 
 	if (ch->connected && !target->qp_in_error) {
-		if (wr_id & LOCAL_INV_WR_ID_MASK) {
+		if (wc->wr_id & LOCAL_INV_WR_ID_MASK) {
 			shost_printk(KERN_ERR, target->scsi_host, PFX
 				     "LOCAL_INV failed with status %s (%d)\n",
-				     ib_wc_status_msg(wc_status), wc_status);
-		} else if (wr_id & FAST_REG_WR_ID_MASK) {
+				     ib_wc_status_msg(wc->status), wc->status);
+		} else if (wc->wr_id & FAST_REG_WR_ID_MASK) {
 			shost_printk(KERN_ERR, target->scsi_host, PFX
 				     "FAST_REG_MR failed status %s (%d)\n",
-				     ib_wc_status_msg(wc_status), wc_status);
+				     ib_wc_status_msg(wc->status), wc->status);
 		} else {
 			shost_printk(KERN_ERR, target->scsi_host,
 				     PFX "failed %s status %s (%d) for iu %p\n",
-				     send_err ? "send" : "receive",
-				     ib_wc_status_msg(wc_status), wc_status,
-				     (void *)(uintptr_t)wr_id);
+				     wc->opcode & IB_WC_RECV ? "recv" : "send",
+				     ib_wc_status_msg(wc->status), wc->status,
+				     (void *)(uintptr_t)wc->wr_id);
 		}
 		queue_work(system_long_wq, &target->tl_err_work);
 	}
@@ -2695,9 +2696,7 @@ static void srp_recv_completion(struct ib_cq *cq, void *ch_ptr)
 				if (likely(wc[i].status == IB_WC_SUCCESS)) {
 					srp_handle_recv(ch, &wc[i]);
 				} else {
-					srp_handle_qp_err(wc[i].wr_id,
-							  wc[i].status,
-							  false, ch);
+					srp_handle_qp_err(cq, wc, "?");
 				}
 			}
 		}
@@ -2720,8 +2719,7 @@ static void srp_send_completion(struct ib_cq *cq, void *ch_ptr)
 				iu = (struct srp_iu *) (uintptr_t) wc[i].wr_id;
 				list_add(&iu->list, &ch->free_tx);
 			} else {
-				srp_handle_qp_err(wc[i].wr_id, wc[i].status,
-						  true, ch);
+				srp_handle_qp_err(cq, wc, "?");
 			}
 		}
 	}
