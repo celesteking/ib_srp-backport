@@ -235,6 +235,12 @@ conftest/ib_inc_rkey/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	echo "$(call run_conftest_bool,ib_inc_rkey,		\
 		HAVE_IB_INC_RKEY)" >"$@"
 
+conftest/ib_map_mr_sg/result-$(KVER).txt: $(KERNEL_IMAGE)	\
+	conftest/ib_map_mr_sg/ib_map_mr_sg.c			\
+	conftest/ib_map_mr_sg/Makefile
+	echo "$(call run_conftest_bool,ib_map_mr_sg,		\
+		HAVE_IB_MAP_MR_SG_WITH_OFFSET)" >"$@"
+
 conftest/ib_mr_length/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	conftest/ib_mr_length/ib_mr_length.c			\
 	conftest/ib_mr_length/Makefile

@@ -1944,9 +1944,7 @@ static int srp_map_finish_fr(struct srp_map_state *state,
 	rkey = ib_inc_rkey(desc->mr->rkey);
 	ib_update_fast_reg_key(desc->mr, rkey);
 
-#if !defined(RHEL_MAJOR) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 7, 0) ||\
-	(defined(RHEL_MAJOR) &&						\
-	 (RHEL_MAJOR -0 < 7 || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3))
+#if !HAVE_IB_MAP_MR_SG_WITH_OFFSET
 	n = ib_map_mr_sg(desc->mr, state->sg, sg_nents, dev->mr_page_size);
 #else
 	n = ib_map_mr_sg(desc->mr, state->sg, sg_nents, sg_offset_p,
