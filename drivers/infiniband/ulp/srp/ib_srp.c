@@ -1956,7 +1956,11 @@ static int srp_map_finish_fr(struct srp_map_state *state,
 	ib_update_fast_reg_key(desc->mr, rkey);
 
 #if !HAVE_IB_MAP_MR_SG_WITH_OFFSET
-	n = ib_map_mr_sg(desc->mr, state->sg, sg_nents, dev->mr_page_size);
+	if (!sg_offset_p || *sg_offset_p == 0)
+		n = ib_map_mr_sg(desc->mr, state->sg, sg_nents,
+				 dev->mr_page_size);
+	else
+		n = -ENOMEM;
 #else
 	n = ib_map_mr_sg(desc->mr, state->sg, sg_nents, sg_offset_p,
 			 dev->mr_page_size);
