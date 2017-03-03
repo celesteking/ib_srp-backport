@@ -1419,7 +1419,8 @@ out:
 	return ret <= 0 ? ret : -ENODEV;
 }
 
-static int srp_inv_rkey(struct srp_rdma_ch *ch, u32 rkey)
+static int srp_inv_rkey(struct srp_request *req, struct srp_rdma_ch *ch,
+		u32 rkey)
 {
 	struct ib_send_wr *bad_wr;
 	struct ib_send_wr wr = {
@@ -1453,7 +1454,7 @@ static void srp_unmap_data(struct scsi_cmnd *scmnd,
 		struct srp_fr_desc **pfr;
 
 		for (i = req->nmdesc, pfr = req->fr_list; i > 0; i--, pfr++) {
-			res = srp_inv_rkey(ch, (*pfr)->mr->rkey);
+			res = srp_inv_rkey(req, ch, (*pfr)->mr->rkey);
 			if (res < 0) {
 				shost_printk(KERN_ERR, target->scsi_host, PFX
 				  "Queueing INV WR for rkey %#x failed (%d)\n",
@@ -1724,6 +1725,7 @@ reset_state:
 
 #if !HAVE_IB_WR_REG_MR
 static int srp_map_finish_fr(struct srp_map_state *state,
+			     struct srp_request *req,
 			     struct srp_rdma_ch *ch)
 {
 	struct srp_target_port *target = ch->target;
@@ -1887,17 +1889,19 @@ static int srp_map_finish_fr(struct srp_map_state *state,
 
 #if !HAVE_IB_WR_REG_MR
 static int srp_finish_mapping(struct srp_map_state *state,
+			      struct srp_request *req,
 			      struct srp_rdma_ch *ch)
 {
 	struct srp_target_port *target = ch->target;
 	struct srp_device *dev = target->srp_host->srp_dev;
 
-	return dev->use_fast_reg ? srp_map_finish_fr(state, ch) :
+	return dev->use_fast_reg ? srp_map_finish_fr(state, req, ch) :
 				   srp_map_finish_fmr(state, ch);
 }
 #endif
 
 static int srp_map_sg_entry(struct srp_map_state *state,
+			    struct srp_request *req,
 			    struct srp_rdma_ch *ch,
 			    struct scatterlist *sg)
 {
@@ -1917,7 +1921,7 @@ static int srp_map_sg_entry(struct srp_map_state *state,
 		if (state->npages == dev->max_pages_per_mr ||
 		    (state->npages > 0 && offset != 0)) {
 #if !HAVE_IB_WR_REG_MR
-			ret = srp_finish_mapping(state, ch);
+			ret = srp_finish_mapping(state, req, ch);
 #else
 			ret = srp_map_finish_fmr(state, ch);
 #endif
@@ -1943,7 +1947,7 @@ static int srp_map_sg_entry(struct srp_map_state *state,
 	ret = 0;
 	if ((dma_addr & ~dev->mr_page_mask) != 0)
 #if !HAVE_IB_WR_REG_MR
-		ret = srp_finish_mapping(state, ch);
+		ret = srp_finish_mapping(state, req, ch);
 #else
 		ret = srp_map_finish_fmr(state, ch);
 #endif
@@ -1962,7 +1966,7 @@ static int srp_map_sg_fmr(struct srp_map_state *state, struct srp_rdma_ch *ch,
 	state->fmr.end = req->fmr_list + ch->target->mr_per_cmd;
 
 	for_each_sg(scat, sg, count, i) {
-		ret = srp_map_sg_entry(state, ch, sg);
+		ret = srp_map_sg_entry(state, req, ch, sg);
 		if (ret)
 			return ret;
 	}
@@ -1988,12 +1992,12 @@ static int srp_map_sg_fr(struct srp_map_state *state, struct srp_rdma_ch *ch,
 	state->fmr.end = req->fmr_list + ch->target->mr_per_cmd;
 
 	for_each_sg(scat, sg, count, i) {
-		ret = srp_map_sg_entry(state, ch, sg);
+		ret = srp_map_sg_entry(state, req, ch, sg);
 		if (ret)
 			return ret;
 	}
 
-	ret = srp_finish_mapping(state, ch);
+	ret = srp_finish_mapping(state, req, ch);
 	if (ret)
 		return ret;
 #else
@@ -2076,7 +2080,7 @@ static int srp_map_idb(struct srp_rdma_ch *ch, struct srp_request *req,
 	state.dma_len = idb_len;
 
 #if !HAVE_IB_WR_REG_MR
-	ret = srp_finish_mapping(&state, ch);
+	ret = srp_finish_mapping(&state, req, ch);
 	if (ret < 0)
 		return ret;
 #else
