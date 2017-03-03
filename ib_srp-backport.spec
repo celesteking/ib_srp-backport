@@ -26,7 +26,7 @@ kversion=%{kversion}
 
 Name:		%{kmod_name}-%{kversion}
 Version:	2.0.41
-Release:	1
+Release:	%{?release:%{release}}%{?!release:1}
 Summary:	%{kmod_name} kernel modules
 Group:		System/Kernel
 License:	GPLv2
