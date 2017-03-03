@@ -194,6 +194,12 @@ conftest/ib_alloc_cq/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	conftest/ib_alloc_cq/Makefile
 	echo "$(call run_conftest_bool,ib_alloc_cq,HAVE_IB_ALLOC_CQ)" >"$@"
 
+conftest/ib_client_remove/result-$(KVER).txt: $(KERNEL_IMAGE)	\
+	conftest/ib_client_remove/ib_client_remove.c		\
+	conftest/ib_client_remove/Makefile
+	echo "$(call run_conftest_bool,ib_client_remove,	\
+		HAVE_IB_CLIENT_REMOVE_CLIENT_ARG)" >"$@"
+
 conftest/ib_cq_init_attr/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	conftest/ib_cq_init_attr/ib_cq_init_attr.c		\
 	conftest/ib_cq_init_attr/Makefile

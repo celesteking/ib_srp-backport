@@ -203,10 +203,7 @@ MODULE_PARM_DESC(ch_count,
 		 "Number of RDMA channels to use for communication with an SRP target. Using more than one channel improves performance if the HCA supports multiple completion vectors. The default value is the minimum of four times the number of online CPU sockets and the number of completion vectors supported by the HCA.");
 
 static void srp_add_one(struct ib_device *device);
-#if	(!defined(RHEL_MAJOR) &&					\
-	 LINUX_VERSION_CODE < KERNEL_VERSION(4, 3, 0)) ||		\
-	(defined(RHEL_MAJOR) &&						\
-	 (RHEL_MAJOR -0 < 7 || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3))
+#if !HAVE_IB_CLIENT_REMOVE_CLIENT_ARG
 static void srp_remove_one(struct ib_device *device);
 #else
 static void srp_remove_one(struct ib_device *device, void *client_data);
@@ -5108,9 +5105,7 @@ free_attr:
 #endif
 }
 
-#if !defined(RHEL_MAJOR) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 3, 0) || \
-	(defined(RHEL_MAJOR) &&						\
-	 (RHEL_MAJOR -0 < 7 || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3))
+#if !HAVE_IB_CLIENT_REMOVE_CLIENT_ARG
 static void srp_remove_one(struct ib_device *device)
 {
 	void *client_data = ib_get_client_data(device, &srp_client);
