@@ -4980,9 +4980,7 @@ static void srp_add_one(struct ib_device *device)
 	u64 max_pages_per_mr;
 	unsigned int flags = 0;
 
-#if !defined(RHEL_MAJOR) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0) || \
-	(defined(RHEL_MAJOR) &&						\
-	 (RHEL_MAJOR -0 < 7 || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3))
+#if HAVE_IB_QUERY_DEVICE
 	attr = kmalloc(sizeof(*attr), GFP_KERNEL);
 	if (!attr)
 		return;
@@ -5096,9 +5094,7 @@ free_dev:
 	kfree(srp_dev);
 
 free_attr:
-#if !defined(RHEL_MAJOR) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0) || \
-	(defined(RHEL_MAJOR) &&						\
-	 (RHEL_MAJOR -0 < 7 || RHEL_MAJOR -0 == 7 && RHEL_MINOR -0 < 3))
+#if HAVE_IB_QUERY_DEVICE
 	kfree(attr);
 #else
 	;

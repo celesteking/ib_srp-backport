@@ -246,6 +246,12 @@ conftest/ib_mr_type_mem_reg/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	echo "$(call run_conftest_bool,ib_mr_type_mem_reg,	\
 		HAVE_IB_MR_TYPE_MEM_REG)" >"$@"
 
+conftest/ib_query_device/result-$(KVER).txt: $(KERNEL_IMAGE)	\
+	conftest/ib_query_device/ib_query_device.c		\
+	conftest/ib_query_device/Makefile
+	echo "$(call run_conftest_bool,ib_query_device,		\
+		HAVE_IB_QUERY_DEVICE)" >"$@"
+
 conftest/ib_query_gid/result-$(KVER).txt: $(KERNEL_IMAGE)	\
 	conftest/ib_query_gid/ib_query_gid.c			\
 	conftest/ib_query_gid/Makefile
