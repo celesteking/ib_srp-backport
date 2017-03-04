@@ -1,0 +1,11 @@
+language: c
+addons:
+  apt:
+    packages:
+      - bc
+      - build-essential
+      - gcc
+      - make
+      - sparse
+install: ci/download_kernels.sh
+script: ci/build.sh
