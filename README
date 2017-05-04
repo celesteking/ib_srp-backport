@@ -4,7 +4,7 @@ ib_srp-backport README
 Introduction
 ------------
 
-This is a backport of the Linux kernel 4.0 InfiniBand SRP initiator with
+This is a backport of the Linux kernel 4.11 InfiniBand SRP initiator with
 the following additional features compared to the SRP initiator included in
 many Linux distributions:
 - Faster failover.
@@ -120,6 +120,7 @@ This version of ib_srp has been tested against the following kernels:
 3.10.7 (kernel.org)
 3.16.2 (kernel.org)
 3.18.6 (kernel.org)
+4.11 (kernel.org)
 
 If you are using another kernel or if you want to make sure that this version
 of the ib_srp driver has been built and installed correctly you can run
