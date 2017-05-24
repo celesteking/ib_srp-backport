@@ -976,6 +976,7 @@ static void srp_free_ch_ib(struct srp_target_port *target,
 		if (ch->fmr_pool)
 			ib_destroy_fmr_pool(ch->fmr_pool);
 	}
+
 	srp_destroy_qp(ch);
 #if !HAVE_IB_ALLOC_CQ
 	ib_destroy_cq(ch->send_cq);
