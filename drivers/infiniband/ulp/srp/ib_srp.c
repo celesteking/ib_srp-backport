@@ -773,6 +773,10 @@ static void srp_destroy_qp(struct srp_rdma_ch *ch)
 	spin_unlock_irq(&ch->lock);
 
 #if 1
+	/*
+	 * The first upstream version of ib_drain_qp() did not support
+	 * IB_POLL_DIRECT. Hence use srp_drain_qp() instead of ib_drain_qp().
+	 */
 	srp_drain_qp(ch->qp);
 #else
 	ib_drain_qp(ch->qp);
