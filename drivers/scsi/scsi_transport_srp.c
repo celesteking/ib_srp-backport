@@ -1108,5 +1108,10 @@ MODULE_AUTHOR("FUJITA Tomonori");
 MODULE_DESCRIPTION("SRP Transport Attributes");
 MODULE_LICENSE("GPL");
 
+#ifndef DRV_VERSION
+#define DRV_VERSION	"2.0"
+#endif
+MODULE_INFO(backport_version, DRV_VERSION);
+
 module_init(srp_transport_init);
 module_exit(srp_transport_exit);

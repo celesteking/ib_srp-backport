@@ -1,5 +1,5 @@
 LINUXINCLUDE := $(PRE_CFLAGS) $(LINUXINCLUDE)
-ccflags-y += -DDRV_VERSION="\"$$(sed -n -e 's/^Version:[[:blank:]]*\([^[:blank:]]*\).*/\1/p' $(KBUILD_EXTMOD)/../../../../ib_srp-backport.spec)\""
-ccflags-y += -DDRV_RELDATE="\"$$(sed -n -e '/^%changelog/,/^-/ s/^\*[[:blank:]]*[^[:blank:]]*[[:blank:]]*\([^[:blank:]]*[[:blank:]]*[^[:blank:]]*[[:blank:]]*[^[:blank:]]*\).*/\1/p' $(KBUILD_EXTMOD)/../../../../ib_srp-backport.spec)\""
+ccflags-y += -DDRV_VERSION="\"$$(sed -n -e 's/^PACKAGE_VERSION=[[:blank:]]*\([^[:blank:]]*\).*/\1/p' $(KBUILD_EXTMOD)/../../../../dkms.conf)\""
+ccflags-y += -DDRV_RELDATE="\"$$(sed -n -e 's/^RELEASE_DATE="[[:blank:]]*\([^[:blank:]]*[[:blank:]]*[^[:blank:]]*[[:blank:]]*[^[:blank:]]*\)"/\1/p' $(KBUILD_EXTMOD)/../../../../dkms.conf)\""
 
 obj-$(CONFIG_INFINIBAND_SRP)			+= ib_srp.o
