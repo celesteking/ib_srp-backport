@@ -85,8 +85,7 @@ drivers/scsi/$(MODULE_SYMVERS): $(KDIR)/$(MODULE_SYMVERS) $(OFED_MODULE_SYMVERS)
 	cat "$(KDIR)/$(MODULE_SYMVERS)" $(OFED_MODULE_SYMVERS) |	   \
 	awk '{sym[$$2]=$$0} END {for (s in sym){print sym[s]}}' >"$@"
 
-drivers/infiniband/ulp/srp/$(MODULE_SYMVERS): $(KDIR)/$(MODULE_SYMVERS)	   \
-	$(OFED_MODULE_SYMVERS) drivers/scsi/$(MODULE_SYMVERS)
+drivers/infiniband/ulp/srp/$(MODULE_SYMVERS): drivers/scsi/scsi_transport_srp.ko
 	cat "$(KDIR)/$(MODULE_SYMVERS)" $(OFED_MODULE_SYMVERS)		   \
 		"drivers/scsi/$(MODULE_SYMVERS)" |			   \
 	awk '{sym[$$2]=$$0} END {for (s in sym){print sym[s]}}' >"$@"

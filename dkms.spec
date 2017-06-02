@@ -70,16 +70,7 @@ echo -e "ERROR: DKMS version is too old"
 exit 1
 
 %preun
-CONFIG_H="/var/lib/dkms/%{module}/%{version}/*/*/%{module}_config.h"
-SPEC_META_ALIAS="@PACKAGE@-@VERSION@-@RELEASE@"
-DKMS_META_ALIAS=`cat $CONFIG_H 2>/dev/null |
-    awk -F'"' '/META_ALIAS/ { print $2; exit 0 }'`
-if [ "$SPEC_META_ALIAS" = "$DKMS_META_ALIAS" ]; then
-    echo -e
-    echo -e "Uninstall of %{module} module ($SPEC_META_ALIAS) beginning:"
-    dkms remove -m %{module} -v %{version} --all --rpm_safe_upgrade
-fi
-exit 0
+dkms remove -m %{module} -v %{version} --all --rpm_safe_upgrade || :
 
 %changelog
 * %(date "+%a %b %d %Y") %packager %{version}-%{release}
