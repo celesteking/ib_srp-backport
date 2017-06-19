@@ -38,7 +38,7 @@ ifneq ($(OFED_KERNEL_IB_RPM),)
 ifeq ($(OFED_KERNEL_IB_RPM),compat-rdma)
 # OFED 3.x
 OFED_KERNEL_DIR:=/usr/src/compat-rdma
-OFED_CFLAGS:=-I$(OFED_KERNEL_DIR)/include
+OFED_CFLAGS:=-I$(OFED_KERNEL_DIR)/include -include "linux/compat-2.6.h"
 else
 ifeq ($(OFED_FLAVOR),MOFED)
 # Mellanox OFED with or without kernel-ib RPM. Since several MOFED backport
