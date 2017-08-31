@@ -1637,6 +1637,21 @@ static void srp_free_req(struct srp_rdma_ch *ch, struct srp_request *req,
 	spin_unlock_irqrestore(&ch->lock, flags);
 }
 
+static void srp_quiesce_req(struct request *rq)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
+	rq->rq_flags |= RQF_QUIET;
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 19)
+	rq->cmd_flags |= RQF_QUIET;
+#else
+	/*
+	 * See also commit "Split struct request ->flags into two parts"
+	 * (4aff5e2333c9a1609662f2091f55c3f6fffdad36).
+	 */
+	rq->flags |= RQF_QUIET;
+#endif
+}
+
 static void srp_finish_req(struct srp_rdma_ch *ch, struct srp_request *req,
 			   struct scsi_device *sdev, int result)
 {
@@ -1644,15 +1659,7 @@ static void srp_finish_req(struct srp_rdma_ch *ch, struct srp_request *req,
 
 	if (scmnd) {
 		srp_free_req(ch, req, scmnd, 0);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 19)
-		scmnd->request->cmd_flags |= RQF_QUIET;
-#else
-		/*
-		 * See also commit "Split struct request ->flags into two
-		 * parts" (4aff5e2333c9a1609662f2091f55c3f6fffdad36).
-		 */
-		scmnd->request->flags |= RQF_QUIET;
-#endif
+		srp_quiesce_req(scmnd->request);
 		scmnd->result = result;
 		scmnd->scsi_done(scmnd);
 	}
@@ -3011,11 +3018,7 @@ static int SRP_QUEUECOMMAND(struct Scsi_Host *shost, struct scsi_cmnd *scmnd)
 	 */
 	scmnd->result = srp_chkready(target->rport);
 	if (unlikely(scmnd->result != 0 || scsi_device_blocked(scmnd->device))) {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 19)
-		scmnd->request->cmd_flags |= RQF_QUIET;
-#else
-		scmnd->request->flags |= RQF_QUIET;
-#endif
+		srp_quiesce_req(scmnd->request);
 		goto err;
 	}
 
@@ -3728,11 +3731,7 @@ static int srp_abort(struct scsi_cmnd *scmnd)
 	else
 		ret = FAILED;
 	srp_free_req(ch, req, scmnd, 0);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 19)
-	scmnd->request->cmd_flags |= RQF_QUIET;
-#else
-	scmnd->request->flags |= RQF_QUIET;
-#endif
+	srp_quiesce_req(scmnd->request);
 	scmnd->result = DID_ABORT << 16;
 	scmnd->scsi_done(scmnd);
 
