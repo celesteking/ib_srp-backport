@@ -291,6 +291,11 @@ conftest/rdma_create_id_net/result-$(KVER).txt:			\
 	echo "$(call run_conftest_bool,rdma_create_id_net,	\
 		RDMA_CREATE_ID_TAKES_NET_ARG)" >"$@"
 
+conftest/sa_path_rec/result-$(KVER).txt:			\
+	conftest/sa_path_rec/sa_path_rec.c			\
+	conftest/sa_path_rec/Makefile
+	echo $(call run_conftest_bool,sa_path_rec,HAVE_SA_PATH_REC) >$@
+
 conftest/scsi_host_use_blk_mq/result-$(KVER).txt:		\
 	conftest/scsi_host_use_blk_mq/scsi_host_use_blk_mq.c	\
 	conftest/scsi_host_use_blk_mq/Makefile
