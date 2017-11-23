@@ -6,14 +6,14 @@
 Name:           %{module}-dkms
 
 Version:        %{?MODVER}%{!?MODVER:2.0.41}
-Release:        %{?release:%{release}}%{?!release:1}
+Release:        %{?REL}%{?!REL:2}%{?dist}
 Summary:        dkms: %{module}
 
 Group:          System Environment/Kernel
 License:        GPLv2
 URL:            http://www.fusionio.com/
 Source0:        %{module}-%{version}.tar.gz
-BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+BuildRoot:      %{_tmppath}/%{name}-%{version}-%{rel}-root-%(%{__id_u} -n)
 BuildArch:      noarch
 
 Requires:       dkms >= 2.2.0.3-20
@@ -25,6 +25,7 @@ Provides:       %{module}-kmod = %{version}
 
 %description
 Backport of the Linux IB/SRP 4.2 kernel module to earlier kernel versions.
+%{dist}
 
 %prep
 %setup -c  -q -n %{module}-%{version}
