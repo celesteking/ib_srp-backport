@@ -38,7 +38,7 @@ ifneq ($(OFED_KERNEL_IB_RPM),)
 ifeq ($(OFED_KERNEL_IB_RPM),compat-rdma)
 # OFED 3.x
 OFED_KERNEL_DIR:=/usr/src/compat-rdma
-OFED_CFLAGS:=-I$(OFED_KERNEL_DIR)/include
+OFED_CFLAGS:=-I$(OFED_KERNEL_DIR)/include -include "linux/compat-2.6.h"
 else
 ifeq ($(OFED_FLAVOR),MOFED)
 # Mellanox OFED with or without kernel-ib RPM. Since several MOFED backport
@@ -289,6 +289,11 @@ conftest/rdma_create_id_net/result-$(KVER).txt:			\
 	conftest/rdma_create_id_net/Makefile
 	echo "$(call run_conftest_bool,rdma_create_id_net,	\
 		RDMA_CREATE_ID_TAKES_NET_ARG)" >"$@"
+
+conftest/sa_path_rec/result-$(KVER).txt:			\
+	conftest/sa_path_rec/sa_path_rec.c			\
+	conftest/sa_path_rec/Makefile
+	echo $(call run_conftest_bool,sa_path_rec,HAVE_SA_PATH_REC) >$@
 
 conftest/scsi_host_use_blk_mq/result-$(KVER).txt:		\
 	conftest/scsi_host_use_blk_mq/scsi_host_use_blk_mq.c	\

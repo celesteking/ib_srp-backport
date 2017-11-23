@@ -207,7 +207,11 @@ struct srp_rdma_ch {
 
 	union {
 		struct ib_cm {
+#if HAVE_SA_PATH_REC
+			struct sa_path_rec	path;
+#else
 			struct ib_sa_path_rec	path;
+#endif
 			struct ib_sa_query	*path_query;
 			int			path_query_id;
 			struct ib_cm_id		*cm_id;
