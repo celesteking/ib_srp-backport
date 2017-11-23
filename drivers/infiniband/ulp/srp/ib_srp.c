@@ -398,6 +398,13 @@ static int srp_new_ib_cm_id(struct srp_rdma_ch *ch)
 	if (ch->ib_cm.cm_id)
 		ib_destroy_cm_id(ch->ib_cm.cm_id);
 	ch->ib_cm.cm_id = new_cm_id;
+#if HAVE_SA_PATH_REC
+	if (rdma_cap_opa_ah(target->srp_host->srp_dev->dev,
+			    target->srp_host->port))
+		ch->ib_cm.path.rec_type = SA_PATH_REC_TYPE_OPA;
+	else
+		ch->ib_cm.path.rec_type = SA_PATH_REC_TYPE_IB;
+#endif
 	ch->ib_cm.path.sgid = target->sgid;
 	ch->ib_cm.path.dgid = target->ib_cm.orig_dgid;
 	ch->ib_cm.path.pkey = target->ib_cm.pkey;
@@ -1012,7 +1019,11 @@ static void srp_free_ch_ib(struct srp_target_port *target,
 }
 
 static void srp_path_rec_completion(int status,
+#if HAVE_SA_PATH_REC
+				    struct sa_path_rec *pathrec,
+#else
 				    struct ib_sa_path_rec *pathrec,
+#endif
 				    void *ch_ptr)
 {
 	struct srp_rdma_ch *ch = ch_ptr;
@@ -1637,6 +1648,21 @@ static void srp_free_req(struct srp_rdma_ch *ch, struct srp_request *req,
 	spin_unlock_irqrestore(&ch->lock, flags);
 }
 
+static void srp_quiesce_req(struct request *rq)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
+	rq->rq_flags |= RQF_QUIET;
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 19)
+	rq->cmd_flags |= RQF_QUIET;
+#else
+	/*
+	 * See also commit "Split struct request ->flags into two parts"
+	 * (4aff5e2333c9a1609662f2091f55c3f6fffdad36).
+	 */
+	rq->flags |= RQF_QUIET;
+#endif
+}
+
 static void srp_finish_req(struct srp_rdma_ch *ch, struct srp_request *req,
 			   struct scsi_device *sdev, int result)
 {
@@ -1644,15 +1670,7 @@ static void srp_finish_req(struct srp_rdma_ch *ch, struct srp_request *req,
 
 	if (scmnd) {
 		srp_free_req(ch, req, scmnd, 0);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 19)
-		scmnd->request->cmd_flags |= RQF_QUIET;
-#else
-		/*
-		 * See also commit "Split struct request ->flags into two
-		 * parts" (4aff5e2333c9a1609662f2091f55c3f6fffdad36).
-		 */
-		scmnd->request->flags |= RQF_QUIET;
-#endif
+		srp_quiesce_req(scmnd->request);
 		scmnd->result = result;
 		scmnd->scsi_done(scmnd);
 	}
@@ -3011,11 +3029,7 @@ static int SRP_QUEUECOMMAND(struct Scsi_Host *shost, struct scsi_cmnd *scmnd)
 	 */
 	scmnd->result = srp_chkready(target->rport);
 	if (unlikely(scmnd->result != 0 || scsi_device_blocked(scmnd->device))) {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 19)
-		scmnd->request->cmd_flags |= RQF_QUIET;
-#else
-		scmnd->request->flags |= RQF_QUIET;
-#endif
+		srp_quiesce_req(scmnd->request);
 		goto err;
 	}
 
@@ -3295,17 +3309,22 @@ static void srp_ib_cm_rej_handler(struct ib_cm_id *cm_id,
 	struct Scsi_Host *shost = target->scsi_host;
 	struct ib_class_port_info *cpi;
 	int opcode;
+	u16 dlid;
 
 	switch (event->param.rej_rcvd.reason) {
 	case IB_CM_REJ_PORT_CM_REDIRECT:
 		cpi = event->param.rej_rcvd.ari;
-		ch->ib_cm.path.dlid = cpi->redirect_lid;
+		dlid = be16_to_cpu(cpi->redirect_lid);
+#if HAVE_SA_PATH_REC
+		sa_path_set_dlid(&ch->ib_cm.path, cpu_to_be32(dlid));
+#else
+		ch->ib_cm.path.dlid = cpu_to_be16(dlid);
+#endif
 		ch->ib_cm.path.pkey = cpi->redirect_pkey;
 		cm_id->remote_cm_qpn = be32_to_cpu(cpi->redirect_qp) & 0x00ffffff;
 		memcpy(ch->ib_cm.path.dgid.raw, cpi->redirect_gid, 16);
 
-		ch->status = ch->ib_cm.path.dlid ?
-			SRP_DLID_REDIRECT : SRP_PORT_REDIRECT;
+		ch->status = dlid ? SRP_DLID_REDIRECT : SRP_PORT_REDIRECT;
 		break;
 
 	case IB_CM_REJ_PORT_REDIRECT:
@@ -3728,11 +3747,7 @@ static int srp_abort(struct scsi_cmnd *scmnd)
 	else
 		ret = FAILED;
 	srp_free_req(ch, req, scmnd, 0);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 19)
-	scmnd->request->cmd_flags |= RQF_QUIET;
-#else
-	scmnd->request->flags |= RQF_QUIET;
-#endif
+	srp_quiesce_req(scmnd->request);
 	scmnd->result = DID_ABORT << 16;
 	scmnd->scsi_done(scmnd);
 
