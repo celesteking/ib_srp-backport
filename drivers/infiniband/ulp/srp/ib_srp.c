@@ -5183,7 +5183,7 @@ static void srp_remove_one(struct ib_device *device, void *client_data)
 		kfree(host);
 	}
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
+#if !HAVE_PD_GLOBAL_RKEY
 	if (srp_dev->global_mr)
 		ib_dereg_mr(srp_dev->global_mr);
 #endif
